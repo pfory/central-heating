@@ -1,0 +1,14 @@
+Central heating
+--------------------------------
+- na základì vıstupní teploty spíná pøes relé èerpadlo ÚT
+- sleduje teploty na vstupu a vıstupu z jednotlivıch radiátorù
+- posílá data na net
+- data lze získat i z interního web serveru
+- detekce vıpadku síového napájení
+
+--HW
+1x ESP8266
+2x DALLAS 18B20 na vstupu a vıstupu z kotle, kadı na zvláštním vstupu
+6x DALLAS 18B20 na vstuopech a vıstupech jednotlivıch radiátorù, sbìrnice a jeden pin procesoru
+1x relé 3,3V
+1x DC-DC mìniè
