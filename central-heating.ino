@@ -3,8 +3,8 @@
 #include <DallasTemperature.h>
 
 //wiring
-#define ONE_WIRE_BUS_OUT                    10
-#define ONE_WIRE_BUS_IN                     11
+#define ONE_WIRE_BUS_IN                     10
+#define ONE_WIRE_BUS_OUT                    11
 #define ONE_WIRE_BUS_UT                     12
 
 #define RELAYPIN                            5
@@ -21,18 +21,24 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
-const unsigned long   meassureDelay = 1000; //in ms
-unsigned long         lastMeass     = 0;
+const unsigned long   measDelay     = 1000; //in ms
+unsigned long         lastMeas      = measDelay;
+const unsigned long   dispDelay     = 5000; //in ms
+unsigned long         lastDisp      = dispDelay;
 float                 tempOUT       = 0;
 float                 tempIN        = 0;
+float                 tempUT[10];
 float                 tempON        = 50;
 float                 tempOFF       = tempON - 5;
 float                 tempOVER      = 100;
+bool                  tempINReady   = false;
+bool                  tempOUTReady  = false;
+bool                  tempUTReady   = false;
 
 //HIGH - relay OFF, LOW - relay ON
 bool relay                               = HIGH; 
 
-unsigned int const SERIAL_SPEED=9600;
+unsigned int const SERIAL_SPEED=115200;
 
 
 #include <LiquidCrystal_I2C.h>
@@ -48,8 +54,8 @@ unsigned int const SERIAL_SPEED=9600;
 #define POL          POSITIVE
 #define LCDROWS      2
 #define LCDCOLS      16
-//LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,1);  // set the LCD
-LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
+LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
+//LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
 
 
 //SW name & version
@@ -81,16 +87,39 @@ void setup(void)
   sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
   sensorsUT.setResolution(12);
   sensorsUT.setWaitForConversion(false);
+  
+  Serial.print("Sensor(s) ");
+  Serial.print(sensorsIN.getDeviceCount());
+  Serial.print(" on bus IN - pin ");
+  Serial.println(ONE_WIRE_BUS_IN);
+  Serial.print("Sensor(s) ");
+  Serial.print(sensorsOUT.getDeviceCount());
+  Serial.print(" on bus OUT - pin ");
+  Serial.println(ONE_WIRE_BUS_OUT);
+  Serial.print("Sensor(s) ");
+  Serial.print(sensorsUT.getDeviceCount());
+  Serial.print(" on bus UT - pin ");
+  Serial.println(ONE_WIRE_BUS_UT);
+  wdt_enable(WDTO_8S);
 }
 
 
 void loop(void)
 { 
-  if (millis() - lastMeass >= meassureDelay) {
-    lastMeass = millis();
-    startMeas();
+  if (millis() - lastMeas >= measDelay) {
+    lastMeas = millis();
+    startMeas();    
+  } else {
+    getTemp();
   }
-  getTemp();
+  
+  if (tempINReady && tempOUTReady && tempUTReady) {
+    if (millis() - lastDisp >= dispDelay) {
+      lastDisp = millis();
+      displayTemp();
+    }
+  }
+
   if (tempOUT >= tempON) {
     relay = LOW;
     
@@ -111,29 +140,43 @@ void loop(void)
 void startMeas() {
   // call sensors.requestTemperatures() to issue a global temperature 
   // request to all devices on the bus
+  tempINReady = tempOUTReady = tempUTReady = false;
   Serial.print("Requesting temperatures...");
+  sensorsIN.requestTemperatures(); // Send the command to get temperatures
   sensorsOUT.requestTemperatures(); // Send the command to get temperatures
+  sensorsUT.requestTemperatures(); // Send the command to get temperatures
   Serial.println("DONE");
 }
 
 void getTemp() {
-  if (sensorsOUT.getCheckForConversion()==true) {
-    Serial.print("Temperature OUT: ");
-    Serial.print(sensorsOUT.getTempCByIndex(0)); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
-    Serial.println();
-  }
   if (sensorsIN.getCheckForConversion()==true) {
-    Serial.print("Temperature IN: ");
-    Serial.print(sensorsIN.getTempCByIndex(0)); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
-    Serial.println();
+    tempIN = sensorsIN.getTempCByIndex(0);
+    tempINReady = true;
+  }
+  if (sensorsOUT.getCheckForConversion()==true) {
+    tempOUT = sensorsOUT.getTempCByIndex(0);
+    tempOUTReady = true;
   }
   if (sensorsUT.getCheckForConversion()==true) {
+    tempUTReady = true;
     for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      Serial.print("Temperature UT ");
-      Serial.print(i);
-      Serial.print(": ");
-      Serial.print(sensorsUT.getTempCByIndex(i)); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
-      Serial.println();
+      tempUT[i]=sensorsUT.getTempCByIndex(i);
     }
+  }
+}
+
+void displayTemp() {
+  Serial.print("Temp IN: ");
+  Serial.print(tempIN); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+  Serial.println();
+  Serial.print("Temp OUT: ");
+  Serial.print(tempOUT); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+  Serial.println();
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+    Serial.print("Temp UT[");
+    Serial.print(i);
+    Serial.print("]: ");
+    Serial.print(tempUT[i]); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+    Serial.println();
   }
 }
