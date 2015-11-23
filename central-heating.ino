@@ -14,6 +14,11 @@
 #define LEDPIN                              0
 #define BUZZERPIN                           16
 
+
+#define IN                                  0
+#define OUT                                 1
+#define RELAY                               100
+
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWireOUT(ONE_WIRE_BUS_OUT);
 OneWire oneWireIN(ONE_WIRE_BUS_IN);
@@ -27,24 +32,27 @@ DallasTemperature sensorsUT(&oneWireUT);
 const unsigned long   measDelay     = 5000; //in ms
 unsigned long         lastMeas      = measDelay;
 const unsigned long   measTime      = 750; //in ms
-const unsigned long   sendDelay     = 60000; //in ms
+const unsigned long   sendDelay     = 20000; //in ms
 unsigned long         lastSend      = sendDelay;
 float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
 float                 tempUT[10];
-float                 tempON        = 24.f;
+float                 tempON        = 26.f;
 float                 tempOFF       = tempON - 2;
 float                 tempOVER      = 100.f;
 
 //HIGH - relay OFF, LOW - relay ON
 bool relay                          = HIGH; 
+bool relayOld                       = !relay; 
 
 unsigned int const SERIAL_SPEED=115200;
 
 #define AP_SSID "Datlovo"
 #define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
 
-#define EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID    "564241f9cf045c757f7e6301/NTjETbUl91Ek0MB2"
+#define EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID    "564241f9cf045c757f7e6301/SuCtZtHfuQzt6xap"
+#define EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID     "564241f9cf045c757f7e6301/VpZzAP0PegsWJeZO"
+#define EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID       "564241f9cf045c757f7e6301/Ca9M05QD3xO3AuVP"
 #define REPORT_INTERVAL 60 // in sec
 #define EIOT_CLOUD_ADDRESS     "cloud.iot-playground.com"
 #define EIOT_CLOUD_PORT        40404
@@ -79,7 +87,7 @@ LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set th
 
 
 //SW name & version
-float const   versionSW                   = 0.1;
+float const   versionSW                   = 0.2;
 char  const   versionSWString[]           = "Central heat v"; 
 
 
@@ -102,6 +110,9 @@ void setup(void)
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
   pinMode(BUZZERPIN, OUTPUT);
+  digitalWrite(RELAYPIN,relay);
+  digitalWrite(LEDPIN,relay);
+  relayOld=relay;
   
   /*char uname[USER_PWD_LEN];
   String str = String(EIOT_USERNAME)+":"+String(EIOT_PASSWORD);  
@@ -120,6 +131,7 @@ void setup(void)
   sensorsUT.setResolution(12);
   sensorsUT.setWaitForConversion(false);
   
+  Serial.println();
   Serial.print("Sensor(s) ");
   Serial.print(sensorsIN.getDeviceCount());
   Serial.print(" on bus IN - pin ");
@@ -144,6 +156,8 @@ void setup(void)
 
 
   wdt_enable(WDTO_8S);
+  
+  lastSend=millis();
 }
 
 
@@ -159,18 +173,24 @@ void loop(void)
   
   if (millis() - lastSend >= sendDelay) {
     lastSend = millis();
-    sendTeperature(tempOUT);
+    sendParam(OUT);
+    sendParam(IN);
   }
 
-  if (tempOUT >= tempON) {
-    //Serial.println("Relay ON");
-    relay = HIGH;
-    
-  }
   if (tempOUT <= tempOFF) {
     //Serial.println("Relay OFF");
     relay = LOW;
   }
+  if ((tempOUT >= tempON) || (tempIN >= tempON)) {
+    //Serial.println("Relay ON");
+    relay = HIGH;
+  }
+  
+  if (relay!=relayOld) {
+    relayOld = relay;
+    sendParam(RELAY);
+  }
+  
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,relay);
   
@@ -235,7 +255,7 @@ void wifiConnect()
   Serial.println("WiFi connected");  
 }
 
-void sendTeperature(float temp)
+void sendParam(byte param)
 {  
    WiFiClient client;
    
@@ -245,7 +265,15 @@ void sendTeperature(float temp)
   }
  
   String url = "";
-  url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID) + "/"+String(temp); // generate EasIoT cloud update parameter URL
+  if (param==OUT) {
+    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID) + "/"+String(tempOUT); // generate EasIoT cloud update parameter URL
+  }
+  if (param==IN) {
+    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID) + "/"+String(tempIN); // generate EasIoT cloud update parameter URL
+  }
+  if (param==RELAY) {
+    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID) + "/"+String(relay); // generate EasIoT cloud update parameter URL
+  }
   
   Serial.print("POST data to URL: ");
   Serial.println(url);
