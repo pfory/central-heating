@@ -15,12 +15,4 @@ Central heating
 
 PINOUT
 ------------------------------------------------------------------
-                     RESET       TXD         D1
-                     ADC         RXD         D3
-          VCC        CH_PD       GPIO4       D5 SCL (DISPLAY, KEYBORD)
-       BUZZER   D16  GPIO16      GPIO5       D4 SDA (DISPLAY, KEYBORD)
-        RELAY   D14  GPIO14      GPIO0       D0 STATUS LED
-    DALLAS UT   D12  GPIO12      GPIO1       D2 DALLAS OUT
-    DALLAS IN   D13  GPIO13      GPIO15      D15
-          VCC        VCC         GND         GND
 
