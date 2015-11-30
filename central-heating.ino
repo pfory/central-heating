@@ -41,13 +41,13 @@ bool relay                          = HIGH;
 
 unsigned int const SERIAL_SPEED=115200;
 
-#define AP_SSID "Datlovo"
-#define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
+#define AP_SSID                               "Datlovo"
+#define AP_PASSWORD                           "Nu6kMABmseYwbCoJ7LyG"
 
-#define EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID    "564241f9cf045c757f7e6301/NTjETbUl91Ek0MB2"
-#define REPORT_INTERVAL 60 // in sec
-#define EIOT_CLOUD_ADDRESS     "cloud.iot-playground.com"
-#define EIOT_CLOUD_PORT        40404
+#define EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID     "564241f9cf045c757f7e6301/NTjETbUl91Ek0MB2"
+#define REPORT_INTERVAL                       60 // in sec
+#define EIOT_CLOUD_ADDRESS                    "cloud.iot-playground.com"
+#define EIOT_CLOUD_PORT                       40404
 
 /*
 // EasyIoT server definitions
