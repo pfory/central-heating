@@ -45,8 +45,6 @@ float                 tempOVER      = 100.f;
 
 //HIGH - relay OFF, LOW - relay ON
 bool relay                          = HIGH; 
-bool relayOld                       = !relay; 
-bool relayTemp                      = HIGH; 
 String instanceId                   = "";
 String valueStr("");
 boolean result;
@@ -148,7 +146,6 @@ void setup(void)
   pinMode(BUZZERPIN, OUTPUT);
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,relay);
-  relayOld=relay;
   
   /*char uname[USER_PWD_LEN];
   String str = String(EIOT_USERNAME)+":"+String(EIOT_PASSWORD);  
@@ -298,24 +295,14 @@ void loop(void)
     relay = HIGH;
   }
 
-  if (switchState==true) { //rucni zapnuti rele
-    if (relay==LOW ) {
-      digitalWrite(RELAYPIN,HIGH);
-      digitalWrite(LEDPIN,HIGH);
-      if (relayTemp==true) {
-        sendParam(RELAYTEMP);
-        relayTemp=false;
-      }
-    }
-  } else {
-    if (relay!=relayOld) {
-      digitalWrite(RELAYPIN,relay);
-      digitalWrite(LEDPIN,relay);
-      relayOld = relay;
-      sendParam(RELAY);
+  if (relay==LOW) {
+    if (switchState==true) { //rucni zapnuti rele
+      relay=HIGH;
     }
   }
   
+  digitalWrite(RELAYPIN,relay);
+  digitalWrite(LEDPIN,relay);
   
   if ((tempOUT || tempIN) >= tempOVER) {
     digitalWrite(BUZZERPIN,HIGH);
@@ -393,12 +380,6 @@ void sendParam(byte param)
   }
   if (param==IN) {
     url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID) + "/"+String(tempIN); // generate EasIoT cloud update parameter URL
-  }
-  if (param==RELAY) {
-    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID) + "/"+String(relay); // generate EasIoT cloud update parameter URL
-  }
-  if (param==RELAYTEMP) {
-    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID) + "/"+String(1); // generate EasIoT cloud update parameter URL
   }
   
   Serial.print("POST data to URL: ");
@@ -508,9 +489,6 @@ void myDataCb(String& topic, String& data) {
   {
     switchState = (data == String("1"))? true: false;
 
-    if (switchState==true) {
-      relayTemp==true;
-    }
     Serial.println("switch state");
     Serial.println(switchState);
 
