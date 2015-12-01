@@ -39,8 +39,8 @@ unsigned long         lastSend      = sendDelay;
 float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
 float                 tempUT[10];
-float                 tempON        = 26.f;
-float                 tempOFF       = tempON - 2;
+float                 tempON        = 40.f;
+float                 tempOFF       = tempON - 5;
 float                 tempOVER      = 100.f;
 
 //HIGH - relay OFF, LOW - relay ON
@@ -187,82 +187,7 @@ void setup(void)
   Serial.print("Temp Over ");
   Serial.println(tempOVER);
 
-    String clientName;
-  //clientName += "esp8266-";
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  clientName += macToStr(mac);
-  clientName += "-";
-  clientName += String(micros() & 0xff, 16);
-  myMqtt.setClientId((char*) clientName.c_str());
-
-
-  Serial.print("MQTT client id:");
-  Serial.println(clientName);
-
-  // setup callbacks
-  myMqtt.onConnected(myConnectedCb);
-  myMqtt.onDisconnected(myDisconnectedCb);
-  myMqtt.onPublished(myPublishedCb);
-  myMqtt.onData(myDataCb);
-  
-  //////Serial.println("connect mqtt...");
-  myMqtt.setUserPwd(EIOTCLOUD_USERNAME, EIOTCLOUD_PASSWORD);  
-  myMqtt.connect();
-
-  delay(500);
-  
-  //get instance id
-  //////Serial.println("suscribe: Db/InstanceId");
-  myMqtt.subscribe("/Db/InstanceId");
-
-  waitOk();
-
-
-  Serial.print("ModuleId: ");
-  Serial.println(storage.moduleId);
-
-
-  //create module if necessary 
-  if (storage.moduleId == 0)
-  {
-    //create module
-
-    Serial.println("create module: Db/"+instanceId+"/NewModule");
-
-    myMqtt.subscribe("/Db/"+instanceId+"/NewModule");
-    waitOk();
-      
-    // create Sensor.Parameter1
-    
-    Serial.println("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");    
-
-    myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");
-    waitOk();
-
-    // set module type
-        
-    Serial.println("Set module type");    
-
-    valueStr = "MT_DIGITAL_OUTPUT";
-    topic  = "/Db/" + instanceId + "/" + String(storage.moduleId) + "/ModuleType";
-    result = myMqtt.publish(topic, valueStr);
-    delay(100);
-
-    // save new module id
-    saveConfig();
-  }
-
-  
-  //publish switch state
-  valueStr = String(!storage.state);
-  topic  = "/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1";
-  result = myMqtt.publish(topic, valueStr);
-
-  //switchState = storage.state;
-  
-  myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1");
-
+  setMQTT();
 
   wdt_enable(WDTO_8S);
   
@@ -493,4 +418,82 @@ void myDataCb(String& topic, String& data) {
     Serial.println(switchState);
 
   }
+}
+
+void setMQTT() {
+    String clientName;
+  //clientName += "esp8266-";
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  clientName += macToStr(mac);
+  clientName += "-";
+  clientName += String(micros() & 0xff, 16);
+  myMqtt.setClientId((char*) clientName.c_str());
+
+
+  Serial.print("MQTT client id:");
+  Serial.println(clientName);
+
+  // setup callbacks
+  myMqtt.onConnected(myConnectedCb);
+  myMqtt.onDisconnected(myDisconnectedCb);
+  myMqtt.onPublished(myPublishedCb);
+  myMqtt.onData(myDataCb);
+  
+  //////Serial.println("connect mqtt...");
+  myMqtt.setUserPwd(EIOTCLOUD_USERNAME, EIOTCLOUD_PASSWORD);  
+  myMqtt.connect();
+
+  delay(500);
+  
+  //get instance id
+  //////Serial.println("suscribe: Db/InstanceId");
+  myMqtt.subscribe("/Db/InstanceId");
+
+  waitOk();
+
+
+  Serial.print("ModuleId: ");
+  Serial.println(storage.moduleId);
+
+
+  //create module if necessary 
+  if (storage.moduleId == 0)
+  {
+    //create module
+
+    Serial.println("create module: Db/"+instanceId+"/NewModule");
+
+    myMqtt.subscribe("/Db/"+instanceId+"/NewModule");
+    waitOk();
+      
+    // create Sensor.Parameter1
+    
+    Serial.println("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");    
+
+    myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");
+    waitOk();
+
+    // set module type
+        
+    Serial.println("Set module type");    
+
+    valueStr = "MT_DIGITAL_OUTPUT";
+    topic  = "/Db/" + instanceId + "/" + String(storage.moduleId) + "/ModuleType";
+    result = myMqtt.publish(topic, valueStr);
+    delay(100);
+
+    // save new module id
+    saveConfig();
+  }
+
+  
+  //publish switch state
+  valueStr = String(!storage.state);
+  topic  = "/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1";
+  result = myMqtt.publish(topic, valueStr);
+
+  //switchState = storage.state;
+  
+  myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1");
 }
