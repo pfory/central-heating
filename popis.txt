@@ -19,7 +19,6 @@ TODO
 PINOUT
 ------------------------------------------------------------------
 
-<<<<<<< HEAD
                        --
                        ||
                        ||
@@ -50,6 +49,3 @@ Svorkovnice
 5 - teplota sbìrnice radiátory
 6 - relé GND
 7 - relé
-
-=======
->>>>>>> 28560e0f639072ed741afd2a4adf4fb9e8b96c2b
