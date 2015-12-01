@@ -1,7 +1,8 @@
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-
+#include <MQTT.h>
+#include <EEPROM.h>
 #include <ESP8266WiFi.h>
 #include <Base64.h>
 
@@ -13,6 +14,12 @@
 #define RELAYPIN                            14
 #define LEDPIN                              0
 #define BUZZERPIN                           16
+
+
+#define IN                                  0
+#define OUT                                 1
+#define RELAY                               100
+#define RELAYTEMP                           101
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWireOUT(ONE_WIRE_BUS_OUT);
@@ -27,27 +34,59 @@ DallasTemperature sensorsUT(&oneWireUT);
 const unsigned long   measDelay     = 5000; //in ms
 unsigned long         lastMeas      = measDelay;
 const unsigned long   measTime      = 750; //in ms
-const unsigned long   sendDelay     = 60000; //in ms
+const unsigned long   sendDelay     = 20000; //in ms
 unsigned long         lastSend      = sendDelay;
 float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
 float                 tempUT[10];
-float                 tempON        = 24.f;
+float                 tempON        = 26.f;
 float                 tempOFF       = tempON - 2;
 float                 tempOVER      = 100.f;
 
 //HIGH - relay OFF, LOW - relay ON
 bool relay                          = HIGH; 
+String instanceId                   = "";
+String valueStr("");
+boolean result;
+String topic("");
+boolean switchState;
+bool stepOk                         = false;
 
 unsigned int const SERIAL_SPEED=115200;
 
-#define AP_SSID                               "Datlovo"
-#define AP_PASSWORD                           "Nu6kMABmseYwbCoJ7LyG"
+#define AP_SSID "Datlovo"
+#define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
 
-#define EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID     "564241f9cf045c757f7e6301/NTjETbUl91Ek0MB2"
-#define REPORT_INTERVAL                       60 // in sec
-#define EIOT_CLOUD_ADDRESS                    "cloud.iot-playground.com"
-#define EIOT_CLOUD_PORT                       40404
+#define EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID    "564241f9cf045c757f7e6301/SuCtZtHfuQzt6xap"
+#define EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID     "564241f9cf045c757f7e6301/VpZzAP0PegsWJeZO"
+#define EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID       "564241f9cf045c757f7e6301/Ca9M05QD3xO3AuVP"
+#define REPORT_INTERVAL 60 // in sec
+#define EIOT_CLOUD_ADDRESS     "cloud.iot-playground.com"
+#define EIOT_CLOUD_PORT        40404
+
+#define EIOTCLOUD_USERNAME "datel"
+#define EIOTCLOUD_PASSWORD "mrdatel"
+
+// create MQTT object
+#define EIOT_CLOUD_ADDRESS "cloud.iot-playground.com"
+MQTT myMqtt("", EIOT_CLOUD_ADDRESS, 1883);
+
+#define CONFIG_START 0
+#define CONFIG_VERSION "v01"
+
+struct StoreStruct {
+  // This is for mere detection if they are your settings
+  char version[4];
+  // The variables of your settings
+  uint moduleId;  // module id
+  bool state;     // state
+} storage = {
+  CONFIG_VERSION,
+  // The default module 0
+  0,
+  0 // off
+};
+
 
 /*
 // EasyIoT server definitions
@@ -79,7 +118,7 @@ LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set th
 
 
 //SW name & version
-float const   versionSW                   = 0.1;
+float const   versionSW                   = 0.2;
 char  const   versionSWString[]           = "Central heat v"; 
 
 
@@ -88,6 +127,9 @@ void setup(void)
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
+
+  EEPROM.begin(512);
+  loadConfig();
   /*
   lcd.home();                   // go home
   lcd.print(versionSWString);  
@@ -102,6 +144,8 @@ void setup(void)
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
   pinMode(BUZZERPIN, OUTPUT);
+  digitalWrite(RELAYPIN,relay);
+  digitalWrite(LEDPIN,relay);
   
   /*char uname[USER_PWD_LEN];
   String str = String(EIOT_USERNAME)+":"+String(EIOT_PASSWORD);  
@@ -120,6 +164,7 @@ void setup(void)
   sensorsUT.setResolution(12);
   sensorsUT.setWaitForConversion(false);
   
+  Serial.println();
   Serial.print("Sensor(s) ");
   Serial.print(sensorsIN.getDeviceCount());
   Serial.print(" on bus IN - pin ");
@@ -142,8 +187,86 @@ void setup(void)
   Serial.print("Temp Over ");
   Serial.println(tempOVER);
 
+    String clientName;
+  //clientName += "esp8266-";
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  clientName += macToStr(mac);
+  clientName += "-";
+  clientName += String(micros() & 0xff, 16);
+  myMqtt.setClientId((char*) clientName.c_str());
+
+
+  Serial.print("MQTT client id:");
+  Serial.println(clientName);
+
+  // setup callbacks
+  myMqtt.onConnected(myConnectedCb);
+  myMqtt.onDisconnected(myDisconnectedCb);
+  myMqtt.onPublished(myPublishedCb);
+  myMqtt.onData(myDataCb);
+  
+  //////Serial.println("connect mqtt...");
+  myMqtt.setUserPwd(EIOTCLOUD_USERNAME, EIOTCLOUD_PASSWORD);  
+  myMqtt.connect();
+
+  delay(500);
+  
+  //get instance id
+  //////Serial.println("suscribe: Db/InstanceId");
+  myMqtt.subscribe("/Db/InstanceId");
+
+  waitOk();
+
+
+  Serial.print("ModuleId: ");
+  Serial.println(storage.moduleId);
+
+
+  //create module if necessary 
+  if (storage.moduleId == 0)
+  {
+    //create module
+
+    Serial.println("create module: Db/"+instanceId+"/NewModule");
+
+    myMqtt.subscribe("/Db/"+instanceId+"/NewModule");
+    waitOk();
+      
+    // create Sensor.Parameter1
+    
+    Serial.println("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");    
+
+    myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");
+    waitOk();
+
+    // set module type
+        
+    Serial.println("Set module type");    
+
+    valueStr = "MT_DIGITAL_OUTPUT";
+    topic  = "/Db/" + instanceId + "/" + String(storage.moduleId) + "/ModuleType";
+    result = myMqtt.publish(topic, valueStr);
+    delay(100);
+
+    // save new module id
+    saveConfig();
+  }
+
+  
+  //publish switch state
+  valueStr = String(!storage.state);
+  topic  = "/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1";
+  result = myMqtt.publish(topic, valueStr);
+
+  //switchState = storage.state;
+  
+  myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1");
+
 
   wdt_enable(WDTO_8S);
+  
+  lastSend=millis();
 }
 
 
@@ -159,18 +282,25 @@ void loop(void)
   
   if (millis() - lastSend >= sendDelay) {
     lastSend = millis();
-    sendTeperature(tempOUT);
+    sendParam(OUT);
+    sendParam(IN);
   }
 
-  if (tempOUT >= tempON) {
-    //Serial.println("Relay ON");
-    relay = HIGH;
-    
-  }
   if (tempOUT <= tempOFF) {
     //Serial.println("Relay OFF");
     relay = LOW;
   }
+  if ((tempOUT >= tempON) || (tempIN >= tempON)) {
+    //Serial.println("Relay ON");
+    relay = HIGH;
+  }
+
+  if (relay==LOW) {
+    if (switchState==true) { //rucni zapnuti rele
+      relay=HIGH;
+    }
+  }
+  
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,relay);
   
@@ -235,7 +365,7 @@ void wifiConnect()
   Serial.println("WiFi connected");  
 }
 
-void sendTeperature(float temp)
+void sendParam(byte param)
 {  
    WiFiClient client;
    
@@ -245,7 +375,12 @@ void sendTeperature(float temp)
   }
  
   String url = "";
-  url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_INSTANCE_PARAM_ID) + "/"+String(temp); // generate EasIoT cloud update parameter URL
+  if (param==OUT) {
+    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID) + "/"+String(tempOUT); // generate EasIoT cloud update parameter URL
+  }
+  if (param==IN) {
+    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID) + "/"+String(tempIN); // generate EasIoT cloud update parameter URL
+  }
   
   Serial.print("POST data to URL: ");
   Serial.println(url);
@@ -264,4 +399,98 @@ void sendTeperature(float temp)
   
   Serial.println();
   Serial.println("Connection closed");
+}
+
+void loadConfig() {
+  // To make sure there are settings, and they are YOURS!
+  // If nothing is found it will use the default settings.
+  if (EEPROM.read(CONFIG_START + 0) == CONFIG_VERSION[0] &&
+      EEPROM.read(CONFIG_START + 1) == CONFIG_VERSION[1] &&
+      EEPROM.read(CONFIG_START + 2) == CONFIG_VERSION[2])
+    for (unsigned int t=0; t<sizeof(storage); t++)
+      *((char*)&storage + t) = EEPROM.read(CONFIG_START + t);
+}
+
+void saveConfig() {
+  for (unsigned int t=0; t<sizeof(storage); t++)
+    EEPROM.write(CONFIG_START + t, *((char*)&storage + t));
+
+  EEPROM.commit();
+}
+
+void waitOk()
+{
+  while(!stepOk)
+    delay(100);
+ 
+  stepOk = false;
+}
+
+String macToStr(const uint8_t* mac)
+{
+  String result;
+  for (int i = 0; i < 6; ++i) {
+    result += String(mac[i], 16);
+    if (i < 5)
+      result += ':';
+  }
+  return result;
+}
+
+
+/*
+ * 
+ */
+void myConnectedCb() {
+
+  Serial.println("connected to MQTT server");
+
+}
+
+void myDisconnectedCb() {
+
+  Serial.println("disconnected. try to reconnect...");
+
+  delay(500);
+  myMqtt.connect();
+}
+
+void myPublishedCb() {
+  
+  Serial.println("published.");
+
+}
+
+void myDataCb(String& topic, String& data) {  
+  
+  Serial.print(topic);
+  Serial.print(": ");
+  Serial.println(data);
+
+  if (topic == String("/Db/InstanceId"))
+  {
+    instanceId = data;
+    stepOk = true;
+  }
+  else if (topic ==  String("/Db/"+instanceId+"/NewModule"))
+  {
+    storage.moduleId = data.toInt();
+    stepOk = true;
+  }
+  else if (topic == String("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter"))
+  {
+    stepOk = true;
+  }
+  else if (topic == String("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Settings.Icon1/NewParameter"))
+  {
+    stepOk = true;
+  }
+  else if (topic == String("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1"))
+  {
+    switchState = (data == String("1"))? true: false;
+
+    Serial.println("switch state");
+    Serial.println(switchState);
+
+  }
 }
