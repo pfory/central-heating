@@ -13,6 +13,9 @@ Central heating
 1x relé 3,3V
 1x DC-DC mìniè
 
+TODO
+- nastavení spínací a rozpínací teploty, zatím natvrdo
+
 PINOUT
 ------------------------------------------------------------------
 
@@ -36,4 +39,14 @@ PINOUT
                     |--------------------|
 
 
+Svorkovnice
+|1|2|3|4|5|6|7|
+
+1 - DALLAS GND
+2 - DALLAS VCC
+3 - teplota OUT
+4 - teplota IN
+5 - teplota sbìrnice radiátory
+6 - relé GND
+7 - relé
 
