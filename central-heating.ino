@@ -4,7 +4,6 @@
 #include <MQTT.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>
-#include <Base64.h>
 
 //wiring
 #define ONE_WIRE_BUS_IN                     13
@@ -104,7 +103,7 @@ struct StoreStruct {
 char unameenc[USER_PWD_LEN];
 */
 
-
+/*
 #include <LiquidCrystal_I2C.h>
 #define LCDADDRESS   0x20
 #define EN           2
@@ -120,7 +119,7 @@ char unameenc[USER_PWD_LEN];
 #define LCDCOLS      16
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
 //LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
-
+*/
 
 //SW name & version
 float const   versionSW                   = 0.2;
@@ -302,6 +301,13 @@ void sendParamMQTT() {
   valueStr = String(relay);
   topic = "/Db/" + instanceId + "/1/Sensor.Pump";
   result = myMqtt.publish(topic, valueStr);
+  //teploty radiatoru
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+    valueStr = String(tempUT[i]);
+    topic = "/Db/" + instanceId + "/1/Sensor.TempRad" + i;
+    result = myMqtt.publish(topic, valueStr);
+  }
+  
 }
 
 /*
