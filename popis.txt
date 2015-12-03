@@ -48,3 +48,20 @@ Svorkovnice
 5 - teplota sbìrnice radiátory
 6 - relé GND
 7 - relé
+
+
+PINY 6x
+VCC 3.3V
+- VCC ESP
+- CH_PD
+- RELAY
+- DALLAS
+
+GND 6x
+- GND ESP
+- RELAY
+- DALLAS
+
+LED 2x
+BUZZER 2x
+I2C 4x
