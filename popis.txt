@@ -64,4 +64,4 @@ GND 6x
 
 LED 2x
 BUZZER 2x
-I2C 4x
+I2C 4x 
