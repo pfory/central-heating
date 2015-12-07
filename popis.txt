@@ -14,7 +14,35 @@ Central heating
 1x DC-DC mìniè
 
 TODO
-- nastavení spínací a rozpínací teploty, zatím natvrdo
+
+
+Mìøení
+- výstup z výmìníku
+- zpáteèka do výmìníku
+- radiátor 1,2,3,4,5,6
+
+Displej
+1234567890123456
+25 25 25 25 25		radiátor 1-5
+100 100 7000W  T	výstup, zpáteèka, výkon, Topí/Netopí
+
+UPS spíná rozpínací kontakt relé detekce síového napájení
+
+Signalizace bìhu èerpadla na displeji a LEDkou
+Signalizace bìhu na UPS
+
+Pøenos teplot a stavù do centrální jednotky pøes UART.
+
+UPS:
+akumulátor by mìl udržet bìžet èerpadlo po dobu 10? hodin
+P=U*I => I=P/U
+
+I=50/230
+I=0.217A
+
+2,17Ah na 230V
+41Ah na 12V
+
 
 PINOUT
 ------------------------------------------------------------------
@@ -76,3 +104,4 @@ KEYBOARD
 
         0|1|2|3|4|5|6|7
 PFC8574 
+
