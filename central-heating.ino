@@ -1,3 +1,12 @@
+//Rad1 - 
+//Rad2 - 
+//Rad3
+//Rad4 - BedRoomNew
+//Rad5 - LivingRoom OUT
+//Rad6 - LivingRoom IN
+//Rad7 -
+//Rad8 - BedRoomNew
+
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -49,18 +58,12 @@ boolean result;
 String topic("");
 boolean switchState;
 bool stepOk                         = false;
+byte status                         = 0;
 
-unsigned int const SERIAL_SPEED=115200;
+unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
 
 #define AP_SSID "Datlovo"
 #define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
-
-//#define EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID    "564241f9cf045c757f7e6301/SuCtZtHfuQzt6xap"
-//#define EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID     "564241f9cf045c757f7e6301/VpZzAP0PegsWJeZO"
-//#define EIOT_CLOUD_RELAY_INSTANCE_PARAM_ID       "564241f9cf045c757f7e6301/Ca9M05QD3xO3AuVP"
-//#define REPORT_INTERVAL 60 // in sec
-//#define EIOT_CLOUD_ADDRESS     "cloud.iot-playground.com"
-//#define EIOT_CLOUD_PORT        40404
 
 #define EIOTCLOUD_USERNAME "datel"
 #define EIOTCLOUD_PASSWORD "mrdatel"
@@ -93,17 +96,6 @@ struct StoreStruct {
 
 
 /*
-// EasyIoT server definitions
-#define EIOT_USERNAME    "admin"
-#define EIOT_PASSWORD    "test"
-#define EIOT_IP_ADDRESS  "192.168.1.53"
-#define EIOT_PORT        80
-#define EIOT_NODE        "N20S0"
-#define USER_PWD_LEN 40
-char unameenc[USER_PWD_LEN];
-*/
-
-/*
 #include <LiquidCrystal_I2C.h>
 #define LCDADDRESS   0x20
 #define EN           2
@@ -125,10 +117,11 @@ LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set th
 float const   versionSW                   = 0.2;
 char  const   versionSWString[]           = "Central heat v"; 
 
+const byte STATUS_AFTER_BOOT  = 9;
 
+/////////////////////////////////////////////   S  E  T  U  P   ////////////////////////////////////
 void setup(void)
 {
-  delay(2000);
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
@@ -152,15 +145,7 @@ void setup(void)
   digitalWrite(RELAYPIN,storage.relay);
   digitalWrite(LEDPIN,storage.relay);
 */
-  wifiConnect();
   
-  /*char uname[USER_PWD_LEN];
-  String str = String(EIOT_USERNAME)+":"+String(EIOT_PASSWORD);  
-  str.toCharArray(uname, USER_PWD_LEN); 
-  memset(unameenc,0,sizeof(unameenc));
-  base64_encode(unameenc, uname, strlen(uname));
-*/
-  // Start up the library
   sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
   sensorsOUT.setResolution(12);
   sensorsOUT.setWaitForConversion(false);
@@ -194,16 +179,25 @@ void setup(void)
   Serial.print("Temp Over ");
   Serial.println(storage.tempAlarm);
 
+  wifiConnect();
   setMQTT();
- 
+  
+  valueStr = String(STATUS_AFTER_BOOT);
+  topic = "/Db/" + instanceId + "/1/Sensor.Status";
+  result = myMqtt.publish(topic, valueStr);
+  
   wdt_enable(WDTO_8S);
   
-  lastSend=millis();
+  lastSend=0;
 }
 
-
-void loop(void)
-{ 
+/////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
+void loop(void) { 
+  wdt_reset();
+  wdt_reset();
+  wdt_reset();
+  wdt_reset();
+  wdt_reset();
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
     startMeas();    
@@ -236,7 +230,7 @@ void loop(void)
   }
 }
 
-
+/////////////////////////////////////////////   F  U  N  C   ///////////////////////////////////////
 void startMeas() {
   // call sensors.requestTemperatures() to issue a global temperature 
   // request to all devices on the bus
@@ -304,49 +298,16 @@ void sendParamMQTT() {
   //teploty radiatoru
   for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
     valueStr = String(tempUT[i]);
-    topic = "/Db/" + instanceId + "/1/Sensor.TempRad" + i;
+    topic = "/Db/" + instanceId + "/1/Sensor.TempRad" + String(i+1);
     result = myMqtt.publish(topic, valueStr);
+    //Serial.print(topic);
+    //Serial.println(valueStr);
   }
-  
+  valueStr = String(status++);
+  topic = "/Db/" + instanceId + "/1/Sensor.Status";
+  result = myMqtt.publish(topic, valueStr);
+  if (status==2) status =0;
 }
-
-/*
-void sendParam(byte param)
-{  
-   WiFiClient client;
-   
-   while(!client.connect(EIOT_CLOUD_ADDRESS, EIOT_CLOUD_PORT)) {
-    Serial.println("connection failed");
-    wifiConnect(); 
-  }
- 
-  String url = "";
-  if (param==OUT) {
-    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_OUT_INSTANCE_PARAM_ID) + "/"+String(tempOUT); // generate EasIoT cloud update parameter URL
-  }
-  if (param==IN) {
-    url += "/RestApi/SetParameter/"+ String(EIOT_CLOUD_TEMP_IN_INSTANCE_PARAM_ID) + "/"+String(tempIN); // generate EasIoT cloud update parameter URL
-  }
-  
-  Serial.print("POST data to URL: ");
-  Serial.println(url);
-  
-  client.print(String("POST ") + url + " HTTP/1.1\r\n" +
-               "Host: " + String(EIOT_CLOUD_ADDRESS) + "\r\n" + 
-               "Connection: close\r\n" + 
-               "Content-Length: 0\r\n" + 
-               "\r\n");
-
-  delay(100);
-    while(client.available()){
-    String line = client.readStringUntil('\r');
-    Serial.print(line);
-  }
-  
-  Serial.println();
-  Serial.println("Connection closed");
-}
-*/
 
 void loadConfig() {
   // To make sure there are settings, and they are YOURS!
@@ -373,8 +334,7 @@ void waitOk()
   stepOk = false;
 }
 
-String macToStr(const uint8_t* mac)
-{
+String macToStr(const uint8_t* mac) {
   String result;
   for (int i = 0; i < 6; ++i) {
     result += String(mac[i], 16);
@@ -534,7 +494,6 @@ void setMQTT() {
   
   //switchState = storage.state;
   Serial.print("Subscribe ");
-  myMqtt.subscribe("/Db/"+instanceId+"/3/Sensor.Parameter1");
   myMqtt.subscribe("/Db/"+instanceId+"/4/Sensor.Parameter1");
   myMqtt.subscribe("/Db/"+instanceId+"/5/Sensor.Parameter1");
   myMqtt.subscribe("/Db/"+instanceId+"/6/Sensor.Parameter1");
