@@ -7,21 +7,37 @@
 //Rad7 -
 //Rad8 - BedRoomNew
 
+#define arduino
+
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#ifdef arduino
+#include <EEPROM.h>
+#include <avr/wdt.h>
+#endif
+#ifndef arduino/*
 #include <MQTT.h>
 #include <EEPROM.h>
-#include <ESP8266WiFi.h>
+#include <ESP8266WiFi.h>*/
+#endif
 
 //wiring
+#ifdef arduino
+#define ONE_WIRE_BUS_IN                     2
+#define ONE_WIRE_BUS_OUT                    4
+#define ONE_WIRE_BUS_UT                     5
+#define RELAYPIN                            6
+#define LEDPIN                              8
+#define BUZZERPIN                           13
+#else
 #define ONE_WIRE_BUS_IN                     13
 #define ONE_WIRE_BUS_OUT                    2
 #define ONE_WIRE_BUS_UT                     12
-
 #define RELAYPIN                            14
 #define LEDPIN                              0
 #define BUZZERPIN                           16
+#endif
 
 
 #define IN                                  0
@@ -48,19 +64,13 @@ float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
 float                 tempUT[10];
 bool                  relay         = LOW;
-/*float                 tempON        = 40.f;
-float                 tempOFF       = tempON - 5;
-float                 tempOVER      = 100.f;
-*/
+#ifndef arduino
 String instanceId                   = "564241f9cf045c757f7e6301";
 String valueStr("");
 boolean result;
 String topic("");
-boolean switchState;
 bool stepOk                         = false;
 byte status                         = 0;
-
-unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
 
 #define AP_SSID "Datlovo"
 #define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
@@ -71,26 +81,29 @@ unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
 // create MQTT object
 #define EIOT_CLOUD_ADDRESS        "cloud.iot-playground.com"
 MQTT myMqtt("", EIOT_CLOUD_ADDRESS, 1883);
+#endif
+
+unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
 
 #define CONFIG_START 0
 #define CONFIG_VERSION "v03"
 
 struct StoreStruct {
   // This is for mere detection if they are your settings
-  char    version[4];
+  char            version[4];
   // The variables of your settings
-  uint    moduleId;  // module id
-  bool    relay;     // relay state
-  float   tempON;
-  float   tempOFFDiff;
-  float   tempAlarm;
+  unsigned int    moduleId;  // module id
+  bool            relay;     // relay state
+  float           tempON;
+  float           tempOFFDiff;
+  float           tempAlarm;
 } storage = {
   CONFIG_VERSION,
   // The default module 0
   0,
   0, // off
-  50,
-  45,
+  60,
+  5,
   100
 };
 
@@ -126,7 +139,9 @@ void setup(void)
   Serial.print(versionSWString);
   Serial.println(versionSW);
 
+#ifndef arduino
   EEPROM.begin(512);
+#endif
   loadConfig();
   /*
   lcd.home();                   // go home
@@ -179,13 +194,14 @@ void setup(void)
   Serial.print("Temp Over ");
   Serial.println(storage.tempAlarm);
 
+#ifndef arduino
   wifiConnect();
   setMQTT();
   
   valueStr = String(STATUS_AFTER_BOOT);
   topic = "/Db/" + instanceId + "/1/Sensor.Status";
   result = myMqtt.publish(topic, valueStr);
-  
+#endif  
   wdt_enable(WDTO_8S);
   
   lastSend=0;
@@ -193,10 +209,6 @@ void setup(void)
 
 /////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
 void loop(void) { 
-  wdt_reset();
-  wdt_reset();
-  wdt_reset();
-  wdt_reset();
   wdt_reset();
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
@@ -206,11 +218,12 @@ void loop(void) {
     displayTemp();
   }
   
+#ifndef arduino
   if (millis() - lastSend >= sendDelay) {
     lastSend = millis();
     sendParamMQTT();
   }
-
+#endif
   if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
     //Serial.println("Relay OFF");
     relay = LOW;
@@ -271,7 +284,7 @@ void displayTemp() {
   }
 }
 
-
+#ifndef arduino
 void wifiConnect()
 {
     Serial.print("Connecting to AP");
@@ -308,6 +321,7 @@ void sendParamMQTT() {
   result = myMqtt.publish(topic, valueStr);
   if (status==2) status =0;
 }
+#endif
 
 void loadConfig() {
   // To make sure there are settings, and they are YOURS!
@@ -322,10 +336,12 @@ void loadConfig() {
 void saveConfig() {
   for (unsigned int t=0; t<sizeof(storage); t++)
     EEPROM.write(CONFIG_START + t, *((char*)&storage + t));
-
+#ifndef arduino
   EEPROM.commit();
+#endif
 }
 
+#ifndef arduino
 void waitOk()
 {
   while(!stepOk)
@@ -499,3 +515,4 @@ void setMQTT() {
   myMqtt.subscribe("/Db/"+instanceId+"/6/Sensor.Parameter1");
   Serial.println(" OK.");
 }
+#endif
