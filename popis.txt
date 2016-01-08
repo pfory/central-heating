@@ -7,11 +7,15 @@ Central heating
 - detekce vıpadku síového napájení
 
 --HW
-1x ESP8266
+1x ESP8266, zatím Arduino
 2x DALLAS 18B20 na vstupu a vıstupu z kotle, kadı na zvláštním vstupu
-6x DALLAS 18B20 na vstupech a vıstupech jednotlivıch radiátorù, sbìrnice a jeden pin procesoru
-1x relé 3,3V
-1x DC-DC mìniè
+8x DALLAS 18B20 na vstupech a vıstupech jednotlivıch radiátorù, sbìrnice a jeden pin procesoru
+1x relé 3,3V (ESP)
+1x relé 5V (ESP) - objednat
+1x DC-DC mìniè 3,3V (ESP)
+1x DC-DC mìnic 5V (Arduino) - objednat
+1x displej 20x4
+1x klávesnice 4x4
 
 TODO
 
@@ -22,9 +26,10 @@ Mìøení
 - radiátor 1,2,3,4,5,6
 
 Displej
-1234567890123456
-25 25 25 25 25		radiátor 1-5
-100 100 7000W  T	vıstup, zpáteèka, vıkon, Topí/Netopí
+12345678901234567890
+
+pøekreslit
+
 
 UPS spíná rozpínací kontakt relé detekce síového napájení
 
