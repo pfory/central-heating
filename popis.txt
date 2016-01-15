@@ -6,18 +6,31 @@ Central heating
 - data lze získat i z interního web serveru
 - detekce vıpadku síového napájení
 
---HW
-1x ESP8266, zatím Arduino
+--HW Arduino
+1x Arduino
+2x DALLAS 18B20 na vstupu a vıstupu z kotle, kadı na zvláštním vstupu
+8x DALLAS 18B20 na vstupech a vıstupech jednotlivıch radiátorù, sbìrnice a jeden pin procesoru
+1x relé 5V - vymìnit za SSR
+1x DC-DC mìnic 5V (Arduino)
+1x displej 20x4
+1x klávesnice 4x4
+1x buzzer
+
+--HW ESP5266
+1x ESP8266
 2x DALLAS 18B20 na vstupu a vıstupu z kotle, kadı na zvláštním vstupu
 8x DALLAS 18B20 na vstupech a vıstupech jednotlivıch radiátorù, sbìrnice a jeden pin procesoru
 1x relé 3,3V (ESP)
-1x relé 5V (ESP) - objednat
 1x DC-DC mìniè 3,3V (ESP)
-1x DC-DC mìnic 5V (Arduino) - objednat
+1x DC-DC mìnic 5V pro displej
 1x displej 20x4
 1x klávesnice 4x4
+1x buzzer
+
 
 TODO
+- vymìnit relé za 5V SSR
+- pøipojit buzzer
 
 
 Mìøení
