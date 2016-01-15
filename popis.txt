@@ -28,6 +28,26 @@ Central heating
 1x buzzer
 
 
+Externí displej Seg7 - v obýváku na zdi
+---------------------------------------
+krabièka s 2 místným LED displejem
+Arduino pøipojené pøes I2C
+2 místný displej
+2xodpor 68ohmù
+1xBuzzer - +,- a signál z centrální jednotky
+Signalizace výstupní teploty, naèítání teploty pøes I2C. Signalizace zapnutého èerpadla LED
+
+Pøipojení k centrální jednotce - kabel 6 žil
+SDA
+SCL
+GND
++5V
+signal buzzer
+signal pro LED èerpadla
+
+
+----------------------------------------------------------------------------------------------------------
+
 TODO
 - vymìnit relé za 5V SSR
 - pøipojit buzzer
