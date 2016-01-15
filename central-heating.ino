@@ -1,10 +1,10 @@
-//Rad1 - 
-//Rad2 - 
-//Rad3
+//Rad1 - WorkRoom
+//Rad2 - LivingRoom OUT
+//Rad3 - BedroomOld
 //Rad4 - BedRoomNew
-//Rad5 - LivingRoom OUT
-//Rad6 - LivingRoom IN
-//Rad7 -
+//Rad5 - LivingRoom IN
+//Rad6 - 
+//Rad7 - BedroomOld
 //Rad8 - BedRoomNew
 
 #define arduino
@@ -12,11 +12,14 @@
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include "beep.h"
+
 #ifdef arduino
 #include <EEPROM.h>
 #include <avr/wdt.h>
 #endif
-#ifndef arduino/*
+#ifndef arduino
+/*
 #include <MQTT.h>
 #include <EEPROM.h>
 #include <ESP8266WiFi.h>*/
@@ -28,8 +31,8 @@
 #define ONE_WIRE_BUS_OUT                    4
 #define ONE_WIRE_BUS_UT                     5
 #define RELAYPIN                            6
-#define LEDPIN                              8
-#define BUZZERPIN                           13
+#define LEDPIN                              13
+#define BUZZERPIN                           8
 #else
 #define ONE_WIRE_BUS_IN                     13
 #define ONE_WIRE_BUS_OUT                    2
@@ -39,6 +42,7 @@
 #define BUZZERPIN                           16
 #endif
 
+Beep beep(BUZZERPIN);
 
 #define IN                                  0
 #define OUT                                 1
@@ -62,7 +66,7 @@ const unsigned long   sendDelay     = 20000; //in ms
 unsigned long         lastSend      = sendDelay;
 float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
-float                 tempUT[10];
+float                 tempUT[12];
 bool                  relay         = LOW;
 #ifndef arduino
 String instanceId                   = "564241f9cf045c757f7e6301";
@@ -108,9 +112,8 @@ struct StoreStruct {
 };
 
 
-/*
 #include <LiquidCrystal_I2C.h>
-#define LCDADDRESS   0x20
+#define LCDADDRESS   0x27
 #define EN           2
 #define RW           1
 #define RS           0
@@ -120,14 +123,12 @@ struct StoreStruct {
 #define D7           7
 #define BACKLIGHT    3
 #define POL          POSITIVE
-#define LCDROWS      2
-#define LCDCOLS      16
+#define LCDROWS      4
+#define LCDCOLS      20
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
-//LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
-*/
 
 //SW name & version
-float const   versionSW                   = 0.2;
+float const   versionSW                   = 0.3;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -138,6 +139,13 @@ void setup(void)
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
+  beep.Delay(100,40,1,255);
+  
+  lcd.begin(LCDCOLS,LCDROWS);               // initialize the lcd 
+  lcd.setBacklight(255);
+  lcd.clear();
+  lcd.print(versionSWString);
+  lcd.print(versionSW);
 
 #ifndef arduino
   EEPROM.begin(512);
@@ -154,28 +162,56 @@ void setup(void)
   
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
-  pinMode(BUZZERPIN, OUTPUT);
 /*  Serial.print("Rele:");
   Serial.println(storage.relay);
   digitalWrite(RELAYPIN,storage.relay);
   digitalWrite(LEDPIN,storage.relay);
 */
   
-  sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-  sensorsOUT.setResolution(12);
-  sensorsOUT.setWaitForConversion(false);
-  sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-  sensorsIN.setResolution(12);
-  sensorsIN.setWaitForConversion(false);
-  sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-  sensorsUT.setResolution(12);
-  sensorsUT.setWaitForConversion(false);
+  while (true) {
+    sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsOUT.setResolution(12);
+    sensorsOUT.setWaitForConversion(false);
+    sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsIN.setResolution(12);
+    sensorsIN.setWaitForConversion(false);
+    sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsUT.setResolution(12);
+    sensorsUT.setWaitForConversion(false);
+
+    if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
+      beep.Delay(100,40,2,255);
+    } else {
+      break;
+    }
+    delay(60000);
+  }
+
   
   Serial.println();
   Serial.print("Sensor(s) ");
   Serial.print(sensorsIN.getDeviceCount());
   Serial.print(" on bus IN - pin ");
   Serial.println(ONE_WIRE_BUS_IN);
+
+  lcd.setCursor(0,1);
+  lcd.print("Sen.");
+  lcd.print(sensorsIN.getDeviceCount());
+  lcd.print(" bus IN");
+   
+  lcd.setCursor(0,2);
+  lcd.print("Sen.");
+  lcd.print(sensorsOUT.getDeviceCount());
+  lcd.print(" bus OUT");
+
+  lcd.setCursor(0,3);
+  lcd.print("Sen.");
+  lcd.print(sensorsUT.getDeviceCount());
+  lcd.print(" bus UT");
+
+  delay(5000);
+  lcd.clear();
+
   Serial.print("Sensor(s) ");
   Serial.print(sensorsOUT.getDeviceCount());
   Serial.print(" on bus OUT - pin ");
@@ -215,6 +251,7 @@ void loop(void) {
     startMeas();    
     delay(measTime);
     getTemp();
+    printTemp();
     displayTemp();
   }
   
@@ -236,11 +273,16 @@ void loop(void) {
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,relay);
   
-  if ((tempOUT || tempIN) >= storage.tempAlarm) {
-    digitalWrite(BUZZERPIN,HIGH);
-  } else {
-    digitalWrite(BUZZERPIN,LOW);
+  if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
+    beep.noDelay(100,40,3,5);
+  } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
+    beep.noDelay(100,40,5,230);
+  } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
+    beep.noDelay(100,40,9,255);
   }
+
+  beep.loop();
+  sevseg.refreshDisplay(); // Must run repeatedly; don't use blocking code (ex: delay()) in the loop() function or this won't work right
 }
 
 /////////////////////////////////////////////   F  U  N  C   ///////////////////////////////////////
@@ -268,7 +310,7 @@ void getTemp() {
   }
 }
 
-void displayTemp() {
+void printTemp() {
   Serial.print("Temp IN: ");
   Serial.print(tempIN); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
   Serial.println();
@@ -516,3 +558,68 @@ void setMQTT() {
   Serial.println(" OK.");
 }
 #endif
+
+
+//display
+/*
+  01234567890123456789
+  --------------------
+0|xxx/xxx     15:30:45
+1|1:xxx/xxx 2:xxx/xxx 
+2|3:xxx/xxx 4:xxx/xxx 
+3|5:xxx/xxx 6:xxx/xxx 
+  --------------------
+  01234567890123456789
+*/
+
+void displayTemp() {
+  lcd.setCursor(0, 0); //col,row
+  lcd.print("       ");
+  lcd.setCursor(0, 0); //col,row
+  addSpaces((int)tempIN);
+  lcd.print((int)tempIN);
+  lcd.setCursor(3, 0); //col,row
+  lcd.print("/");
+  addSpaces((int)tempOUT);
+  lcd.print((int)tempOUT);
+  lcd.setCursor(12, 0); //col,row
+  lcd.print("15:30:45");
+
+  byte radka=1;
+  byte sensor=0;
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+4) {
+    lcd.setCursor(0, radka);
+    lcd.print(sensor+1);
+    lcd.print(":       ");
+    lcd.setCursor(2, radka);
+    addSpaces((int)tempUT[sensor]);
+    lcd.print((int)tempUT[sensor++]);    
+    lcd.setCursor(5, radka);
+    lcd.print("/");
+    addSpaces((int)tempUT[sensor]);
+    lcd.print((int)tempUT[sensor++]);    
+    lcd.setCursor(10, radka);
+    lcd.print(sensor);
+    lcd.print(":       ");
+    lcd.setCursor(12, radka);
+    addSpaces((int)tempUT[sensor]);
+    lcd.print((int)tempUT[sensor++]);    
+    lcd.setCursor(15, radka++);
+    lcd.print("/");
+    addSpaces((int)tempUT[sensor]);
+    lcd.print((int)tempUT[sensor++]);    
+  }
+
+  lcd.setCursor(8, 0);
+  if (relay==LOW) {
+    lcd.print("    ");
+  }else{
+    lcd.print("CER");
+  }
+}
+
+void addSpaces(int cislo) {
+  if (cislo<100 && cislo>0) lcd.print(" ");
+  if (cislo<10 && cislo>0) lcd.print(" ");
+  if (cislo<=0 && cislo>-10) lcd.print(" ");
+}

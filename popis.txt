@@ -32,6 +32,10 @@ TODO
 - vymìnit relé za 5V SSR
 - pøipojit buzzer
 
+BEEP
+tempAlarm   - tempAlarm+4       100,40,1-5,5
+tempAlarm+5 - tempAlarm+9       100,40,1-5,230
+tempAlarm+10                    100,40,5-9,255
 
 Mìøení
 - výstup z výmìníku
