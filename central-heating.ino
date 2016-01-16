@@ -64,7 +64,7 @@ const unsigned long   sendDelay     = 20000; //in ms
 unsigned long         lastSend      = sendDelay;
 float                 tempOUT       = 0.f;
 float                 tempIN        = 0.f;
-float                 tempUT[12];
+float                 tempUT[10];
 bool                  relay         = HIGH;
 #ifndef arduino
 String instanceId                   = "564241f9cf045c757f7e6301";
@@ -88,7 +88,7 @@ MQTT myMqtt("", EIOT_CLOUD_ADDRESS, 1883);
 unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
 
 #define CONFIG_START 0
-#define CONFIG_VERSION "v04"
+#define CONFIG_VERSION "v07"
 
 struct StoreStruct {
   // This is for mere detection if they are your settings
@@ -106,7 +106,7 @@ struct StoreStruct {
   0, // off
   60,
   5,
-  90
+  85
 };
 
 
@@ -150,17 +150,11 @@ void setup(void)
   EEPROM.begin(512);
 #endif
   loadConfig();
-  /*
-  lcd.home();                   // go home
-  lcd.print(versionSWString);  
-  lcd.print(" ");
-  lcd.print (versionSW);
-  delay(1000);
-  lcd.clear();
-  */
-  
+ 
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
+  digitalWrite(RELAYPIN,relay);
+  digitalWrite(LEDPIN,!relay);
   pinMode(BUZZERPIN, OUTPUT);
 /*  Serial.print("Rele:");
   Serial.println(storage.relay);
@@ -203,14 +197,11 @@ void setup(void)
   lcd.print("Sen.");
   lcd.print(sensorsOUT.getDeviceCount());
   lcd.print(" bus OUT");
-
+ 
   lcd.setCursor(0,3);
   lcd.print("Sen.");
   lcd.print(sensorsUT.getDeviceCount());
   lcd.print(" bus UT");
-
-  delay(5000);
-  lcd.clear();
 
   Serial.print("Sensor(s) ");
   Serial.print(sensorsOUT.getDeviceCount());
@@ -227,9 +218,31 @@ void setup(void)
   Serial.println(storage.tempON);
   Serial.print("Temp OFF diff ");
   Serial.println(storage.tempOFFDiff);
-  Serial.print("Temp Over ");
+  Serial.print("Temp alarm ");
   Serial.println(storage.tempAlarm);
 
+  
+  delay(3000);
+  lcd.clear();
+  lcd.print(versionSWString);
+  lcd.print(versionSW);
+
+  lcd.setCursor(0,1);
+  lcd.print("Temp ON:");
+  lcd.print(storage.tempON);
+
+  lcd.setCursor(0,2);
+  lcd.print("Temp OFF diff:");
+  lcd.print(storage.tempOFFDiff);
+  
+  lcd.setCursor(0,3);
+  lcd.print("Temp alarm:");
+  lcd.print(storage.tempAlarm);
+
+  delay(3000);
+  lcd.clear();
+
+  
 #ifndef arduino
   wifiConnect();
   setMQTT();
@@ -241,10 +254,17 @@ void setup(void)
   wdt_enable(WDTO_8S);
   
   lastSend=0;
+  lastMeas=0;
 }
 
+//bool first=true;
 /////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
 void loop(void) { 
+/*  if (first) {
+    beep.noDelay(100,40,4,255);
+    first=false;
+  }
+*/  
   wdt_reset();
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
@@ -252,60 +272,64 @@ void loop(void) {
     delay(measTime);
     getTemp();
     printTemp();
-    displayTemp();
     Wire.beginTransmission(8);
     Wire.write((byte)tempOUT);
     Wire.endTransmission();
-  }
   
-  if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
-    //Serial.println("Relay OFF");
-    relay = HIGH;
-  }
-  if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
-    //Serial.println("Relay ON");
-    relay = LOW;
-  }
-  
-  if (millis() - lastSend >= sendDelay) {
-    lastSend = millis();
-#ifndef arduino
-    sendParamMQTT();
-#endif
-
-    //send to solar unit via I2C
-#ifdef arduino
-    //data sended:
-    //I tempIN 
-    //O tempOUT
-    //1-x tempRad1-x
-    //R relay status
-    Wire.beginTransmission(9);
-    Wire.write("I");
-    Wire.write((int)tempIN);
-    Wire.write("O");
-    Wire.write((int)tempOUT);
-    Wire.write("R");
-    Wire.write(relay);
-    for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      Wire.write(i+1);
-      Wire.write((int)tempUT[i]);
+    if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
+      //Serial.println("Relay OFF");
+      relay = HIGH;
     }
-    Wire.endTransmission();
+    if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
+      //Serial.println("Relay ON");
+      relay = LOW;
+    }
+
+    digitalWrite(RELAYPIN,relay);
+    digitalWrite(LEDPIN,!relay);
+
+    displayTemp();
+    
+    if (millis() - lastSend >= sendDelay) {
+      lastSend = millis();
+#ifndef arduino
+      sendParamMQTT();
 #endif
+
+      //send to solar unit via I2C
+#ifdef arduino
+      //data sended:
+      //I tempIN 
+      //O tempOUT
+      //1-x tempRad1-x
+      //R relay status
+      Wire.beginTransmission(9);
+      Wire.write("I");
+      Wire.write((int)tempIN);
+      Wire.write("O");
+      Wire.write((int)tempOUT);
+      Wire.write("R");
+      Wire.write(relay);
+      for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+        Wire.write(i+1);
+        Wire.write((int)tempUT[i]);
+      }
+      Wire.endTransmission();
+#endif
+    }
+
+    if (tempOUT >= storage.tempAlarm) {
+      beep.noDelay(100,40,3,255);
+    }
+    /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
+      beep.noDelay(100,40,3,255);
+    } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
+      beep.noDelay(100,40,5,255);
+    } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
+      beep.noDelay(100,40,9,255);
+    } */
   }
   
-  digitalWrite(RELAYPIN,relay);
-  digitalWrite(LEDPIN,!relay);
-
- if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
-    beep.noDelay(100,40,3,5);
-  } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
-    beep.noDelay(100,40,5,230);
-  } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
-    beep.noDelay(100,40,9,255);
-  }  
-
   beep.loop();
 }
 
@@ -321,6 +345,7 @@ void startMeas() {
 }
 
 void getTemp() {
+  float tempUTRaw[sensorsUT.getDeviceCount()];
   if (sensorsIN.getCheckForConversion()==true) {
     tempIN = sensorsIN.getTempCByIndex(0);
   }
@@ -329,8 +354,22 @@ void getTemp() {
   }
   if (sensorsUT.getCheckForConversion()==true) {
     for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      tempUT[i]=sensorsUT.getTempCByIndex(i);
+      tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
     }
+    
+    //remaping temp
+    tempUT[0]=tempUTRaw[5];
+    tempUT[1]=tempUTRaw[4];
+    tempUT[2]=tempUTRaw[3];
+    tempUT[3]=tempUTRaw[7];
+    tempUT[4]=tempUTRaw[0];
+    tempUT[5]=tempUTRaw[1];
+    tempUT[6]=tempUTRaw[2];
+    tempUT[7]=tempUTRaw[6];
+/*    tempUT[8]=tempUTRaw[];
+    tempUT[9]=tempUTRaw[];
+    tempUT[10]=tempUTRaw[];
+    tempUT[11]=tempUTRaw[];*/
   }
 }
 
@@ -604,7 +643,7 @@ void displayTemp() {
   lcd.print((int)tempIN);
   lcd.setCursor(3, 0); //col,row
   lcd.print("/");
-  addSpaces((int)tempOUT);
+  //addSpaces((int)tempOUT);
   lcd.print((int)tempOUT);
   lcd.setCursor(12, 0); //col,row
   lcd.print("15:30:45");
@@ -620,7 +659,7 @@ void displayTemp() {
     lcd.print((int)tempUT[sensor++]);    
     lcd.setCursor(5, radka);
     lcd.print("/");
-    addSpaces((int)tempUT[sensor]);
+    //addSpaces((int)tempUT[sensor]);
     lcd.print((int)tempUT[sensor++]);    
     lcd.setCursor(10, radka);
     lcd.print(sensor);
@@ -630,7 +669,7 @@ void displayTemp() {
     lcd.print((int)tempUT[sensor++]);    
     lcd.setCursor(15, radka++);
     lcd.print("/");
-    addSpaces((int)tempUT[sensor]);
+    //addSpaces((int)tempUT[sensor]);
     lcd.print((int)tempUT[sensor++]);    
   }
 
