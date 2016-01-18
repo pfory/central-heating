@@ -1,3 +1,51 @@
+/*
+--------------------------------------------------------------------------------------------------------------------------
+
+               CENTRAL HEATING - control system for central heating
+
+Petr Fory pfory@seznam.cz
+
+Petr Fory pfory@seznam.cz
+GIT - https://github.com/pfory/central-heating
+
+Version history:
+0.3 - 16.1.2015
+
+compilated by Arduino 1.6.4
+
+--------------------------------------------------------------------------------------------------------------------------
+HW
+Pro Mini 328
+I2C display
+1 Relays module
+DALLAS
+keyboard
+
+Pro Mini 328 Layout
+------------------------------------------
+A0              - 
+A1              - 
+A2              - 
+A3              - free
+A4              - I2C display SDA 0x20, I2C Central heating unit 0x02
+A5              - I2C display SCL 0x20, I2C Central heating unit 0x02
+D0              - Rx
+D1              - Tx
+D2              - DALLAS
+D3              - 
+D4              - DALLAS
+D5              - DALLAS
+D6              - 
+D7              - 
+D8              - LED
+D9              - BUZZER
+D10             - free
+D11             - free
+D12             - free
+D13             - free
+--------------------------------------------------------------------------------------------------------------------------
+
+
 //Rad1 - 
 //Rad2 - 
 //Rad3
@@ -6,7 +54,7 @@
 //Rad6 - LivingRoom IN
 //Rad7 -
 //Rad8 - BedRoomNew
-
+*/
 #define arduino
 
 #include <Wire.h>
@@ -124,7 +172,31 @@ struct StoreStruct {
 #define LCDROWS      4
 #define LCDCOLS      20
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
-//LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
+
+#define keypad
+#ifdef keypad
+int address                               = 0x27;
+uint8_t data;
+int error;
+uint8_t pin                               = 0;
+char key                                  = ' ';
+char keyOld                               = ' ';
+unsigned int repeatAfterMs                = 300;
+unsigned int repeatCharSec                = 10;
+unsigned long lastKeyPressed              = 0;
+
+//define the symbols on the buttons of the keypads
+const byte ROWS                           = 4; //four rows
+const byte COLS                           = 4; //four columns
+char hexaKeys[ROWS][COLS]                 = {
+                                            {'*','0','#','D'},
+                                            {'7','8','9','C'},
+                                            {'4','5','6','B'},
+                                            {'1','2','3','A'}
+};
+#endif
+
+
 
 //SW name & version
 float const   versionSW                   = 0.3;
@@ -331,6 +403,8 @@ void loop(void) {
   }
   
   beep.loop();
+  keyPressed();
+
 }
 
 /////////////////////////////////////////////   F  U  N  C   ///////////////////////////////////////
@@ -650,9 +724,10 @@ void displayTemp() {
 
   byte radka=1;
   byte sensor=0;
+  byte radiator=1;
   for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+4) {
     lcd.setCursor(0, radka);
-    lcd.print(sensor+1);
+    lcd.print(radiator++);
     lcd.print(":       ");
     lcd.setCursor(2, radka);
     addSpaces((int)tempUT[sensor]);
@@ -662,7 +737,7 @@ void displayTemp() {
     //addSpaces((int)tempUT[sensor]);
     lcd.print((int)tempUT[sensor++]);    
     lcd.setCursor(10, radka);
-    lcd.print(sensor);
+    lcd.print(radiator++);
     lcd.print(":       ");
     lcd.setCursor(12, radka);
     addSpaces((int)tempUT[sensor]);
@@ -686,3 +761,73 @@ void addSpaces(int cislo) {
   if (cislo<10 && cislo>0) lcd.print(" ");
   if (cislo<=0 && cislo>-10) lcd.print(" ");
 }
+
+
+#ifdef keypad
+uint8_t read8() {
+  Wire.beginTransmission(address);
+  Wire.requestFrom(address, 1);
+  data = Wire.read();
+  error = Wire.endTransmission();
+  return data;
+}
+
+uint8_t read(uint8_t pin) {
+  read8();
+  return (data & (1<<pin)) > 0;
+}
+
+void write8(uint8_t value) {
+  Wire.beginTransmission(address);
+  data = value;
+  Wire.write(data);
+  error = Wire.endTransmission();
+}
+
+void write(uint8_t pin, uint8_t value) {
+  read8();
+  if (value == LOW) {
+    data &= ~(1<<pin);
+  }else{
+    data |= (1<<pin);
+  }
+  write8(data); 
+}
+
+void keyPressed() {
+  byte row=0;
+  byte col=255;
+  byte b=127;
+  if (millis() - lastKeyPressed > repeatAfterMs) {
+    keyOld = 0;
+  }
+  for (byte i=0; i<4; i++) {
+    row=i;
+    b=~(255&(1<<i+4));
+    //Serial.println(b);
+    write8(b);
+    col = colTest(read8(), b);
+    if (col<255) {
+      key = hexaKeys[row][col];
+      if (key!=keyOld) {
+        lastKeyPressed = millis();
+        keyOld=hexaKeys[row][col];
+        Serial.print(row);
+        Serial.print(",");
+        Serial.print(col);
+        Serial.print("=");
+        Serial.println((char)key);
+      }
+      break;
+    }
+  }
+}
+
+byte colTest(byte key, byte b) {
+  if (key==b-8) return 0;
+  else if (key==b-4) return 1;
+  else if (key==b-2) return 2;
+  else if (key==b-1) return 3;
+  else return 255;
+}
+#endif
