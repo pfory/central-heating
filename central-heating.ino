@@ -9,6 +9,7 @@ Petr Fory pfory@seznam.cz
 GIT - https://github.com/pfory/central-heating
 
 Version history:
+0.4 - 23.2.2016 - add RTC, prenos teploty na satelit
 0.3 - 16.1.2015
 
 compilated by Arduino 1.6.4
@@ -23,9 +24,9 @@ keyboard
 
 Pro Mini 328 Layout
 ------------------------------------------
-A0              - 
-A1              - 
-A2              - 
+A0              - DS1302 CE
+A1              - DS1302 IO
+A2              - DS1302 CLK
 A3              - free
 A4              - I2C display SDA 0x20, I2C Central heating unit 0x02
 A5              - I2C display SCL 0x20, I2C Central heating unit 0x02
@@ -88,20 +89,53 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
-const unsigned long   measDelay     = 5000; //in ms
-unsigned long         lastMeas      = measDelay;
-const unsigned long   measTime      = 750; //in ms
-const unsigned long   sendDelay     = 20000; //in ms
-unsigned long         lastSend      = sendDelay;
-float                 tempOUT       = 0.f;
-float                 tempIN        = 0.f;
-float                 tempUT[10];
-bool                  relay         = HIGH;
+const unsigned long   measDelay           = 5000; //in ms
+unsigned long         lastMeas            = measDelay;
+const unsigned long   measTime            = 750; //in ms
+const unsigned long   sendDelay           = 20000; //in ms
+unsigned long         lastSend            = sendDelay;
+float                 tempOUT             = 0.f;
+float                 tempIN              = 0.f;
+float                 tempUT[10];     
+bool                  relay               = HIGH;
+const unsigned long   pumpProtect         = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
+const unsigned long   pumpProtectRun      = 300000;     //1000*60*5;     //in ms = 5 min
+#define TEMP_ERR -127
+               
+unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze byt vice
 
-unsigned int const SERIAL_SPEED     = 9600;  //kvuli BT modulu jinak muze byt vice
+#define DS1307
+
+#ifdef DS1307
+#include <DS1307RTC.h>
+#define time
+#endif
+
+#ifdef DS1302
+#include <DS1302RTC.h>
+// Set pins:  CE, IO,CLK
+DS1302RTC RTC(A0, A1, A2);
+#define time
+//set time => seriovy monitor zadat rrrr,m,d,h,m,s napr. 2016,2,7,23,30,00
+#endif
+
+
+#ifdef time
+#include <Time.h>
+#include <Streaming.h>        
+#include <Time.h>             
+bool parse=false;
+bool config=false;
+tmElements_t    tm;
+const char *monthName[12] = {
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+bool isTime = true;
+#endif
 
 #define CONFIG_START 0
-#define CONFIG_VERSION "v07"
+#define CONFIG_VERSION "v08"
 
 struct StoreStruct {
   // This is for mere detection if they are your settings
@@ -112,6 +146,9 @@ struct StoreStruct {
   float           tempON;
   float           tempOFFDiff;
   float           tempAlarm;
+#ifdef time
+  tmElements_t    lastPumpRun;
+#endif
 } storage = {
   CONFIG_VERSION,
   // The default module 0
@@ -119,9 +156,8 @@ struct StoreStruct {
   0, // off
   60,
   5,
-  85
+  95
 };
-
 
 #include <LiquidCrystal_I2C.h>
 #define LCDADDRESS   0x27
@@ -161,8 +197,6 @@ char hexaKeys[ROWS][COLS]                 = {
 };
 #endif
 
-
-
 //SW name & version
 float const   versionSW                   = 0.4;
 char  const   versionSWString[]           = "Central heat v"; 
@@ -182,33 +216,82 @@ void setup(void)
   lcd.clear();
   lcd.print(versionSWString);
   lcd.print(versionSW);
+  
+#ifdef DS1302
+  if (RTC.haltRTC()) {
+    Serial.println("Clock stopped!");
+    Serial.println("The DS1302 is stopped.");
+    Serial.println("example to initialize the time and begin running.");
+    Serial.println();
+  } else
+    Serial.println("Clock working.");
+
+  if (RTC.writeEN())
+    Serial.println("Write allowed.");
+  else
+    Serial.println("Write protected.");
+
+  delay ( 2000 );
+#endif
+  
+  // Setup time library  
+  Serial.print("RTC Sync");
+  setSyncProvider(RTC.get);          // the function to get the time from the RTC
+  if(timeStatus() == timeSet)
+    Serial.print(" Ok!");
+  else
+    Serial.print(" FAIL!");
+
+  
+  
+  printDateTime();
 
   loadConfig();
+  Serial.print("Temp ON ");
+  Serial.println(storage.tempON);
+  Serial.print("Temp OFF diff ");
+  Serial.println(storage.tempOFFDiff);
+  Serial.print("Temp alarm ");
+  Serial.println(storage.tempAlarm);
  
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,!relay);
   pinMode(BUZZERPIN, OUTPUT);
-  
+
+  delay(1000);
+  lcd.clear();
   while (true) {
     sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-    sensorsOUT.setResolution(12);
-    sensorsOUT.setWaitForConversion(false);
     sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-    sensorsIN.setResolution(12);
-    sensorsIN.setWaitForConversion(false);
     sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-    sensorsUT.setResolution(12);
-    sensorsUT.setWaitForConversion(false);
 
     if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
-      beep.Delay(100,40,2,255);
-    } else {
+      beep.Delay(100,40,1,255);
+      Serial.println("NO temperature sensor(s) DS18B20 found!!!!!!!!!");
+      lcd.setCursor(0, 1);
+      lcd.print("!NO temp.sensor(s)!!");
+      lcd.setCursor(0, 2);
+      lcd.print("!!!DS18B20 found!!!!");
+      lcd.setCursor(0, 3);
+      lcd.print("!!!!!Check wire!!!!!");
+#ifdef time
+      displayTime();
+      //break;
+#endif
+      } else {
       break;
     }
-    delay(60000);
+    delay(800);
   }
+
+  sensorsOUT.setResolution(12);
+  sensorsOUT.setWaitForConversion(false);
+  sensorsIN.setResolution(12);
+  sensorsIN.setWaitForConversion(false);
+  sensorsUT.setResolution(12);
+  sensorsUT.setWaitForConversion(false);
 
   
   Serial.println();
@@ -243,13 +326,6 @@ void setup(void)
   Serial.print("Send interval ");
   Serial.print(sendDelay);
   Serial.println(" sec");
-  Serial.print("Temp ON ");
-  Serial.println(storage.tempON);
-  Serial.print("Temp OFF diff ");
-  Serial.println(storage.tempOFFDiff);
-  Serial.print("Temp alarm ");
-  Serial.println(storage.tempAlarm);
-
   
   delay(3000);
   lcd.clear();
@@ -286,6 +362,9 @@ void loop(void) {
   }
 */  
   wdt_reset();
+  
+  setTime();
+  
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
     startMeas();    
@@ -293,12 +372,29 @@ void loop(void) {
     getTemp();
     printTemp();
     Wire.beginTransmission(8);
+    //tempOUT=random(0,100);
     Wire.write((byte)tempOUT);
     Wire.endTransmission();
-  
+
+    /*
+    //zapis casu do solaru
+    Wire.beginTransmission(10);
+    Wire.write();
+    Wire.endTransmission();
+    
+    //zadost o data ze solaru
+    Wire.beginTransmission(10);
+    Wire.write();
+    Wire.endTransmission();
+    */
+
+    
     if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
       //Serial.println("Relay OFF");
       relay = HIGH;
+#ifdef time
+      storage.lastPumpRun = tm;
+#endif
     }
     if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
       //Serial.println("Relay ON");
@@ -348,6 +444,12 @@ void loop(void) {
   beep.loop();
   keyPressed();
 
+  
+#ifdef time
+  displayTime();
+
+  testPumpProtect();
+#endif
 }
 
 /////////////////////////////////////////////   F  U  N  C   ///////////////////////////////////////
@@ -438,15 +540,21 @@ void displayTemp() {
   lcd.setCursor(0, 0); //col,row
   lcd.print("       ");
   lcd.setCursor(0, 0); //col,row
-  addSpaces((int)tempIN);
-  lcd.print((int)tempIN);
+  if (tempIN==TEMP_ERR) {
+    displayTempErr();
+  }else {
+    addSpaces((int)tempIN);
+    lcd.print((int)tempIN);
+  }
   lcd.setCursor(3, 0); //col,row
   lcd.print("/");
   //addSpaces((int)tempOUT);
-  lcd.print((int)tempOUT);
-  lcd.setCursor(12, 0); //col,row
-  lcd.print("15:30:45");
-
+  if (tempOUT==TEMP_ERR) {
+    displayTempErr();
+  }else {
+    lcd.print((int)tempOUT);
+  }
+  
   byte radka=1;
   byte sensor=0;
   byte radiator=1;
@@ -455,22 +563,37 @@ void displayTemp() {
     lcd.print(radiator++);
     lcd.print(":       ");
     lcd.setCursor(2, radka);
-    addSpaces((int)tempUT[sensor]);
-    lcd.print((int)tempUT[sensor++]);    
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[sensor]);
+      lcd.print((int)tempUT[sensor++]);
+    }
     lcd.setCursor(5, radka);
     lcd.print("/");
-    //addSpaces((int)tempUT[sensor]);
-    lcd.print((int)tempUT[sensor++]);    
+    if (tempUT[sensor+1]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      lcd.print((int)tempUT[sensor++]);    
+    }
     lcd.setCursor(10, radka);
     lcd.print(radiator++);
     lcd.print(":       ");
     lcd.setCursor(12, radka);
-    addSpaces((int)tempUT[sensor]);
-    lcd.print((int)tempUT[sensor++]);    
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[sensor]);
+      lcd.print((int)tempUT[sensor++]);    
+    }
     lcd.setCursor(15, radka++);
     lcd.print("/");
     //addSpaces((int)tempUT[sensor]);
-    lcd.print((int)tempUT[sensor++]);    
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      lcd.print((int)tempUT[sensor++]);    
+    }
   }
 
   lcd.setCursor(8, 0);
@@ -480,6 +603,11 @@ void displayTemp() {
     lcd.print("CER");
   }
 }
+
+void displayTempErr() {
+  lcd.print("Err");
+}
+
 
 void addSpaces(int cislo) {
   if (cislo<100 && cislo>0) lcd.print(" ");
@@ -555,4 +683,139 @@ byte colTest(byte key, byte b) {
   else if (key==b-1) return 3;
   else return 255;
 }
+#endif
+
+
+#ifdef time
+//display time on LCD
+void lcd2digits(int number) {
+  if (number >= 0 && number < 10) {
+    lcd.write('0');
+  }
+  lcd.print(number);
+}
+
+void print2digits(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
+  }
+  Serial.print(number);
+}
+
+
+void displayTime() {
+  //Serial.print(RTC.get());
+  lcd.setCursor(12, 0); //col,row
+  if (RTC.read(tm)) {
+    lcd2digits(tm.Hour);
+    lcd.write(':');
+    lcd2digits(tm.Minute);
+    lcd.write(':');
+    lcd2digits(tm.Second);
+  } else {
+    lcd.write('        ');
+  }
+}
+/*
+//time functions
+bool getTime(const char *str) {
+  int Hour, Min, Sec;
+
+  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
+  tm.Hour = Hour;
+  tm.Minute = Min;
+  tm.Second = Sec;
+  return true;
+}
+
+bool getDate(const char *str) {
+  char Month[12];
+  int Day, Year;
+  uint8_t monthIndex;
+
+  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
+  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
+    if (strcmp(Month, monthName[monthIndex]) == 0) break;
+  }
+  if (monthIndex >= 12) return false;
+  tm.Day = Day;
+  tm.Month = monthIndex + 1;
+  tm.Year = CalendarYrToTm(Year);
+  return true;
+}
+*/
+//zabranuje zatuhnuti cerpadla v lete
+void testPumpProtect() {
+  //if (storage.lastPumpRun
+}
+
+void printDateTime() {
+  Serial.print("UNIX Time: ");
+  Serial.print(RTC.get());
+
+  if (! RTC.read(tm)) {
+    Serial.print("  Time = ");
+    print2digits(tm.Hour);
+    Serial.write(':');
+    print2digits(tm.Minute);
+    Serial.write(':');
+    print2digits(tm.Second);
+    Serial.print(", Date (D/M/Y) = ");
+    Serial.print(tm.Day);
+    Serial.write('/');
+    Serial.print(tm.Month);
+    Serial.write('/');
+    Serial.print(tmYearToCalendar(tm.Year));
+    Serial.print(", DoW = ");
+    Serial.print(tm.Wday);
+    Serial.println();
+  } else {
+#ifdef DS1302
+    Serial.println("DS1302 read error!  Please check the circuitry.");
+#endif
+#ifdef DS1307
+    Serial.println("DS1307 read error!  Please check the circuitry.");
+#endif
+    Serial.println();
+  }
+}
+
+
+void setTime() {
+  static time_t tLast;
+  time_t t;
+  tmElements_t tm;
+  //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
+  if (Serial.available() >= 12) {
+      //note that the tmElements_t Year member is an offset from 1970,
+      //but the RTC wants the last two digits of the calendar year.
+      //use the convenience macros from Time.h to do the conversions.
+      int y = Serial.parseInt();
+      if (y >= 100 && y < 1000)
+        Serial.println("Error: Year must be two digits or four digits!");
+      else {
+        if (y >= 1000)
+          tm.Year = CalendarYrToTm(y);
+        else    //(y < 100)
+          tm.Year = y2kYearToTm(y);
+          tm.Month = Serial.parseInt();
+          tm.Day = Serial.parseInt();
+          tm.Hour = Serial.parseInt();
+          tm.Minute = Serial.parseInt();
+          tm.Second = Serial.parseInt();
+          t = makeTime(tm);
+    //use the time_t value to ensure correct weekday is set
+        if(RTC.set(t) == 0) { // Success
+          setTime(t);
+          Serial.println("RTC set");
+          //printDateTime(t);
+          //Serial.println();
+        }else
+          Serial.println("RTC set failed!");
+          //dump any extraneous input
+          while (Serial.available() > 0) Serial.read();
+      }
+  }
+}
+
 #endif

@@ -1,6 +1,6 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
-#define LCDADDRESS   0x27
+#define LCDADDRESS   0x27 //0x20 for 16x2
 #define EN           2
 #define RW           1
 #define RS           0
