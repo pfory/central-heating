@@ -1,3 +1,52 @@
+/*
+--------------------------------------------------------------------------------------------------------------------------
+
+               CENTRAL HEATING - control system for central heating
+
+Petr Fory pfory@seznam.cz
+
+Petr Fory pfory@seznam.cz
+GIT - https://github.com/pfory/central-heating
+
+Version history:
+0.4 - 23.2.2016 - add RTC, prenos teploty na satelit
+0.3 - 16.1.2015
+
+compilated by Arduino 1.6.4
+
+--------------------------------------------------------------------------------------------------------------------------
+HW
+Pro Mini 328
+I2C display
+1 Relays module
+DALLAS
+keyboard
+
+Pro Mini 328 Layout
+------------------------------------------
+A0              - DS1302 CE
+A1              - DS1302 IO
+A2              - DS1302 CLK
+A3              - free
+A4              - I2C display SDA 0x20, I2C Central heating unit 0x02
+A5              - I2C display SCL 0x20, I2C Central heating unit 0x02
+D0              - Rx
+D1              - Tx
+D2              - DALLAS
+D3              - 
+D4              - DALLAS
+D5              - DALLAS
+D6              - 
+D7              - 
+D8              - LED
+D9              - BUZZER
+D10             - free
+D11             - free
+D12             - free
+D13             - free
+--------------------------------------------------------------------------------------------------------------------------
+
+
 //Rad1 - 
 //Rad2 - 
 //Rad3
@@ -6,39 +55,24 @@
 //Rad6 - LivingRoom IN
 //Rad7 -
 //Rad8 - BedRoomNew
-
-#define arduino
+*/
 
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#ifdef arduino
+#include "beep.h"
 #include <EEPROM.h>
 #include <avr/wdt.h>
-#endif
-#ifndef arduino/*
-#include <MQTT.h>
-#include <EEPROM.h>
-#include <ESP8266WiFi.h>*/
-#endif
 
 //wiring
-#ifdef arduino
 #define ONE_WIRE_BUS_IN                     2
 #define ONE_WIRE_BUS_OUT                    4
 #define ONE_WIRE_BUS_UT                     5
 #define RELAYPIN                            6
 #define LEDPIN                              8
-#define BUZZERPIN                           13
-#else
-#define ONE_WIRE_BUS_IN                     13
-#define ONE_WIRE_BUS_OUT                    2
-#define ONE_WIRE_BUS_UT                     12
-#define RELAYPIN                            14
-#define LEDPIN                              0
-#define BUZZERPIN                           16
-#endif
+#define BUZZERPIN                           9
 
+Beep beep(BUZZERPIN);
 
 #define IN                                  0
 #define OUT                                 1
@@ -55,38 +89,53 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
-const unsigned long   measDelay     = 5000; //in ms
-unsigned long         lastMeas      = measDelay;
-const unsigned long   measTime      = 750; //in ms
-const unsigned long   sendDelay     = 20000; //in ms
-unsigned long         lastSend      = sendDelay;
-float                 tempOUT       = 0.f;
-float                 tempIN        = 0.f;
-float                 tempUT[10];
-bool                  relay         = LOW;
-#ifndef arduino
-String instanceId                   = "564241f9cf045c757f7e6301";
-String valueStr("");
-boolean result;
-String topic("");
-bool stepOk                         = false;
-byte status                         = 0;
+const unsigned long   measDelay           = 5000; //in ms
+unsigned long         lastMeas            = measDelay;
+const unsigned long   measTime            = 750; //in ms
+const unsigned long   sendDelay           = 20000; //in ms
+unsigned long         lastSend            = sendDelay;
+float                 tempOUT             = 0.f;
+float                 tempIN              = 0.f;
+float                 tempUT[10];     
+bool                  relay               = HIGH;
+const unsigned long   pumpProtect         = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
+const unsigned long   pumpProtectRun      = 300000;     //1000*60*5;     //in ms = 5 min
+#define TEMP_ERR -127
+               
+unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze byt vice
 
-#define AP_SSID "Datlovo"
-#define AP_PASSWORD "Nu6kMABmseYwbCoJ7LyG"
+#define DS1307
 
-#define EIOTCLOUD_USERNAME "datel"
-#define EIOTCLOUD_PASSWORD "mrdatel"
-
-// create MQTT object
-#define EIOT_CLOUD_ADDRESS        "cloud.iot-playground.com"
-MQTT myMqtt("", EIOT_CLOUD_ADDRESS, 1883);
+#ifdef DS1307
+#include <DS1307RTC.h>
+#define time
 #endif
 
-unsigned int const SERIAL_SPEED=9600;  //kvuli BT modulu jinak muze byt vice
+#ifdef DS1302
+#include <DS1302RTC.h>
+// Set pins:  CE, IO,CLK
+DS1302RTC RTC(A0, A1, A2);
+#define time
+//set time => seriovy monitor zadat rrrr,m,d,h,m,s napr. 2016,2,7,23,30,00
+#endif
+
+
+#ifdef time
+#include <Time.h>
+#include <Streaming.h>        
+#include <Time.h>             
+bool parse=false;
+bool config=false;
+tmElements_t    tm;
+const char *monthName[12] = {
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
+bool isTime = true;
+#endif
 
 #define CONFIG_START 0
-#define CONFIG_VERSION "v03"
+#define CONFIG_VERSION "v08"
 
 struct StoreStruct {
   // This is for mere detection if they are your settings
@@ -97,6 +146,9 @@ struct StoreStruct {
   float           tempON;
   float           tempOFFDiff;
   float           tempAlarm;
+#ifdef time
+  tmElements_t    lastPumpRun;
+#endif
 } storage = {
   CONFIG_VERSION,
   // The default module 0
@@ -104,13 +156,11 @@ struct StoreStruct {
   0, // off
   60,
   5,
-  100
+  95
 };
 
-
-/*
 #include <LiquidCrystal_I2C.h>
-#define LCDADDRESS   0x20
+#define LCDADDRESS   0x27
 #define EN           2
 #define RW           1
 #define RS           0
@@ -120,14 +170,35 @@ struct StoreStruct {
 #define D7           7
 #define BACKLIGHT    3
 #define POL          POSITIVE
-#define LCDROWS      2
-#define LCDCOLS      16
+#define LCDROWS      4
+#define LCDCOLS      20
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
-//LiquidCrystal_I2C lcd(LCDADDRESS,2,16);  // set the LCD
-*/
+
+#define keypad
+#ifdef keypad
+int address                               = 0x27;
+uint8_t data;
+int error;
+uint8_t pin                               = 0;
+char key                                  = ' ';
+char keyOld                               = ' ';
+unsigned int repeatAfterMs                = 300;
+unsigned int repeatCharSec                = 10;
+unsigned long lastKeyPressed              = 0;
+
+//define the symbols on the buttons of the keypads
+const byte ROWS                           = 4; //four rows
+const byte COLS                           = 4; //four columns
+char hexaKeys[ROWS][COLS]                 = {
+                                            {'*','0','#','D'},
+                                            {'7','8','9','C'},
+                                            {'4','5','6','B'},
+                                            {'1','2','3','A'}
+};
+#endif
 
 //SW name & version
-float const   versionSW                   = 0.2;
+float const   versionSW                   = 0.4;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -138,44 +209,112 @@ void setup(void)
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
-
-#ifndef arduino
-  EEPROM.begin(512);
-#endif
-  loadConfig();
-  /*
-  lcd.home();                   // go home
-  lcd.print(versionSWString);  
-  lcd.print(" ");
-  lcd.print (versionSW);
-  delay(1000);
-  lcd.clear();
-  */
+  beep.Delay(100,40,1,255);
   
+  lcd.begin(LCDCOLS,LCDROWS);               // initialize the lcd 
+  lcd.setBacklight(255);
+  lcd.clear();
+  lcd.print(versionSWString);
+  lcd.print(versionSW);
+  
+#ifdef DS1302
+  if (RTC.haltRTC()) {
+    Serial.println("Clock stopped!");
+    Serial.println("The DS1302 is stopped.");
+    Serial.println("example to initialize the time and begin running.");
+    Serial.println();
+  } else
+    Serial.println("Clock working.");
+
+  if (RTC.writeEN())
+    Serial.println("Write allowed.");
+  else
+    Serial.println("Write protected.");
+
+  delay ( 2000 );
+#endif
+  
+  // Setup time library  
+  Serial.print("RTC Sync");
+  setSyncProvider(RTC.get);          // the function to get the time from the RTC
+  if(timeStatus() == timeSet)
+    Serial.print(" Ok!");
+  else
+    Serial.print(" FAIL!");
+
+  
+  
+  printDateTime();
+
+  loadConfig();
+  Serial.print("Temp ON ");
+  Serial.println(storage.tempON);
+  Serial.print("Temp OFF diff ");
+  Serial.println(storage.tempOFFDiff);
+  Serial.print("Temp alarm ");
+  Serial.println(storage.tempAlarm);
+ 
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
+  digitalWrite(RELAYPIN,relay);
+  digitalWrite(LEDPIN,!relay);
   pinMode(BUZZERPIN, OUTPUT);
-/*  Serial.print("Rele:");
-  Serial.println(storage.relay);
-  digitalWrite(RELAYPIN,storage.relay);
-  digitalWrite(LEDPIN,storage.relay);
-*/
-  
-  sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+
+  delay(1000);
+  lcd.clear();
+  while (true) {
+    sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+
+    if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
+      beep.Delay(100,40,1,255);
+      Serial.println("NO temperature sensor(s) DS18B20 found!!!!!!!!!");
+      lcd.setCursor(0, 1);
+      lcd.print("!NO temp.sensor(s)!!");
+      lcd.setCursor(0, 2);
+      lcd.print("!!!DS18B20 found!!!!");
+      lcd.setCursor(0, 3);
+      lcd.print("!!!!!Check wire!!!!!");
+#ifdef time
+      displayTime();
+      //break;
+#endif
+      } else {
+      break;
+    }
+    delay(800);
+  }
+
   sensorsOUT.setResolution(12);
   sensorsOUT.setWaitForConversion(false);
-  sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
   sensorsIN.setResolution(12);
   sensorsIN.setWaitForConversion(false);
-  sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
   sensorsUT.setResolution(12);
   sensorsUT.setWaitForConversion(false);
+
   
   Serial.println();
   Serial.print("Sensor(s) ");
   Serial.print(sensorsIN.getDeviceCount());
   Serial.print(" on bus IN - pin ");
   Serial.println(ONE_WIRE_BUS_IN);
+
+  lcd.setCursor(0,1);
+  lcd.print("Sen.");
+  lcd.print(sensorsIN.getDeviceCount());
+  lcd.print(" bus IN");
+   
+  lcd.setCursor(0,2);
+  lcd.print("Sen.");
+  lcd.print(sensorsOUT.getDeviceCount());
+  lcd.print(" bus OUT");
+ 
+  lcd.setCursor(0,3);
+  lcd.print("Sen.");
+  lcd.print(sensorsUT.getDeviceCount());
+  lcd.print(" bus UT");
+
   Serial.print("Sensor(s) ");
   Serial.print(sensorsOUT.getDeviceCount());
   Serial.print(" on bus OUT - pin ");
@@ -187,85 +326,130 @@ void setup(void)
   Serial.print("Send interval ");
   Serial.print(sendDelay);
   Serial.println(" sec");
-  Serial.print("Temp ON ");
-  Serial.println(storage.tempON);
-  Serial.print("Temp OFF diff ");
-  Serial.println(storage.tempOFFDiff);
-  Serial.print("Temp Over ");
-  Serial.println(storage.tempAlarm);
-
-#ifndef arduino
-  wifiConnect();
-  setMQTT();
   
-  valueStr = String(STATUS_AFTER_BOOT);
-  topic = "/Db/" + instanceId + "/1/Sensor.Status";
-  result = myMqtt.publish(topic, valueStr);
-#endif  
+  delay(3000);
+  lcd.clear();
+  lcd.print(versionSWString);
+  lcd.print(versionSW);
+
+  lcd.setCursor(0,1);
+  lcd.print("Temp ON:");
+  lcd.print(storage.tempON);
+
+  lcd.setCursor(0,2);
+  lcd.print("Temp OFF diff:");
+  lcd.print(storage.tempOFFDiff);
+  
+  lcd.setCursor(0,3);
+  lcd.print("Temp alarm:");
+  lcd.print(storage.tempAlarm);
+
+  delay(3000);
+  lcd.clear();
+
   wdt_enable(WDTO_8S);
   
   lastSend=0;
+  lastMeas=0;
 }
 
+//bool first=true;
 /////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
 void loop(void) { 
+/*  if (first) {
+    beep.noDelay(100,40,4,255);
+    first=false;
+  }
+*/  
   wdt_reset();
+  
+  setTime();
+  
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
     startMeas();    
     delay(measTime);
     getTemp();
-    displayTemp();
+    printTemp();
     Wire.beginTransmission(8);
+    //tempOUT=random(0,100);
     Wire.write((byte)tempOUT);
     Wire.endTransmission();
-  }
-  
-  if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
-    //Serial.println("Relay OFF");
-    relay = LOW;
-  }
-  if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
-    //Serial.println("Relay ON");
-    relay = HIGH;
-  }
-  
-  if (millis() - lastSend >= sendDelay) {
-    lastSend = millis();
-#ifndef arduino
-    sendParamMQTT();
-#endif
 
-    //send to solar unit via I2C
-#ifdef arduino
-    //data sended:
-    //I tempIN 
-    //O tempOUT
-    //1-x tempRad1-x
-    //R relay status
-    Wire.beginTransmission(9);
-    Wire.write("I");
-    Wire.write(tempIN);
-    Wire.write("O");
-    Wire.write(tempOUT);
-    Wire.write("R");
-    Wire.write(relay);
-    for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      Wire.write(i+1);
-      Wire.write(tempUT[i]);
-    }
+    /*
+    //zapis casu do solaru
+    Wire.beginTransmission(10);
+    Wire.write();
     Wire.endTransmission();
+    
+    //zadost o data ze solaru
+    Wire.beginTransmission(10);
+    Wire.write();
+    Wire.endTransmission();
+    */
+
+    
+    if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
+      //Serial.println("Relay OFF");
+      relay = HIGH;
+#ifdef time
+      storage.lastPumpRun = tm;
 #endif
+    }
+    if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
+      //Serial.println("Relay ON");
+      relay = LOW;
+    }
+
+    digitalWrite(RELAYPIN,relay);
+    digitalWrite(LEDPIN,!relay);
+
+    displayTemp();
+    
+    if (millis() - lastSend >= sendDelay) {
+      lastSend = millis();
+
+      //send to solar unit via I2C
+      //data sended:
+      //I tempIN 
+      //O tempOUT
+      //1-x tempRad1-x
+      //R relay status
+      Wire.beginTransmission(9);
+      Wire.write("I");
+      Wire.write((int)tempIN);
+      Wire.write("O");
+      Wire.write((int)tempOUT);
+      Wire.write("R");
+      Wire.write(relay);
+      for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+        Wire.write(i+1);
+        Wire.write((int)tempUT[i]);
+      }
+      Wire.endTransmission();
+    }
+
+    if (tempOUT >= storage.tempAlarm) {
+      beep.noDelay(100,40,3,255);
+    }
+    /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
+      beep.noDelay(100,40,3,255);
+    } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
+      beep.noDelay(100,40,5,255);
+    } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
+      beep.noDelay(100,40,9,255);
+    } */
   }
   
-  digitalWrite(RELAYPIN,relay);
-  digitalWrite(LEDPIN,relay);
+  beep.loop();
+  keyPressed();
+
   
-  if ((tempOUT || tempIN) >= storage.tempAlarm) {
-    digitalWrite(BUZZERPIN,HIGH);
-  } else {
-    digitalWrite(BUZZERPIN,LOW);
-  }
+#ifdef time
+  displayTime();
+
+  testPumpProtect();
+#endif
 }
 
 /////////////////////////////////////////////   F  U  N  C   ///////////////////////////////////////
@@ -280,6 +464,7 @@ void startMeas() {
 }
 
 void getTemp() {
+  float tempUTRaw[sensorsUT.getDeviceCount()];
   if (sensorsIN.getCheckForConversion()==true) {
     tempIN = sensorsIN.getTempCByIndex(0);
   }
@@ -288,12 +473,26 @@ void getTemp() {
   }
   if (sensorsUT.getCheckForConversion()==true) {
     for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      tempUT[i]=sensorsUT.getTempCByIndex(i);
+      tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
     }
+    
+    //remaping temp
+    tempUT[0]=tempUTRaw[5];
+    tempUT[1]=tempUTRaw[4];
+    tempUT[2]=tempUTRaw[3];
+    tempUT[3]=tempUTRaw[7];
+    tempUT[4]=tempUTRaw[0];
+    tempUT[5]=tempUTRaw[1];
+    tempUT[6]=tempUTRaw[2];
+    tempUT[7]=tempUTRaw[6];
+/*  tempUT[8]=tempUTRaw[];
+    tempUT[9]=tempUTRaw[];
+    tempUT[10]=tempUTRaw[];
+    tempUT[11]=tempUTRaw[];*/
   }
 }
 
-void displayTemp() {
+void printTemp() {
   Serial.print("Temp IN: ");
   Serial.print(tempIN); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
   Serial.println();
@@ -309,45 +508,6 @@ void displayTemp() {
   }
 }
 
-#ifndef arduino
-void wifiConnect()
-{
-    Serial.print("Connecting to AP");
-    WiFi.begin(AP_SSID, AP_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(".");
-  }
-  
-  Serial.println("");
-  Serial.println("WiFi connected");  
-}
-
-void sendParamMQTT() {
-  valueStr = String(tempOUT);
-  topic = "/Db/" + instanceId + "/1/Sensor.TempOUT";
-  result = myMqtt.publish(topic, valueStr);
-  valueStr = String(tempIN);
-  topic = "/Db/" + instanceId + "/1/Sensor.TempIN";
-  result = myMqtt.publish(topic, valueStr);
-  valueStr = String(relay);
-  topic = "/Db/" + instanceId + "/1/Sensor.Pump";
-  result = myMqtt.publish(topic, valueStr);
-  //teploty radiatoru
-  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-    valueStr = String(tempUT[i]);
-    topic = "/Db/" + instanceId + "/1/Sensor.TempRad" + String(i+1);
-    result = myMqtt.publish(topic, valueStr);
-    //Serial.print(topic);
-    //Serial.println(valueStr);
-  }
-  valueStr = String(status++);
-  topic = "/Db/" + instanceId + "/1/Sensor.Status";
-  result = myMqtt.publish(topic, valueStr);
-  if (status==2) status =0;
-}
-#endif
-
 void loadConfig() {
   // To make sure there are settings, and they are YOURS!
   // If nothing is found it will use the default settings.
@@ -359,185 +519,303 @@ void loadConfig() {
 }
 
 void saveConfig() {
-  for (unsigned int t=0; t<sizeof(storage); t++)
+  for (unsigned int t=0; t<sizeof(storage); t++) {
     EEPROM.write(CONFIG_START + t, *((char*)&storage + t));
-#ifndef arduino
-  EEPROM.commit();
+  }
+}
+
+//display
+/*
+  01234567890123456789
+  --------------------
+0|xxx/xxx     15:30:45
+1|1:xxx/xxx 2:xxx/xxx 
+2|3:xxx/xxx 4:xxx/xxx 
+3|5:xxx/xxx 6:xxx/xxx 
+  --------------------
+  01234567890123456789
+*/
+
+void displayTemp() {
+  lcd.setCursor(0, 0); //col,row
+  lcd.print("       ");
+  lcd.setCursor(0, 0); //col,row
+  if (tempIN==TEMP_ERR) {
+    displayTempErr();
+  }else {
+    addSpaces((int)tempIN);
+    lcd.print((int)tempIN);
+  }
+  lcd.setCursor(3, 0); //col,row
+  lcd.print("/");
+  //addSpaces((int)tempOUT);
+  if (tempOUT==TEMP_ERR) {
+    displayTempErr();
+  }else {
+    lcd.print((int)tempOUT);
+  }
+  
+  byte radka=1;
+  byte sensor=0;
+  byte radiator=1;
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+4) {
+    lcd.setCursor(0, radka);
+    lcd.print(radiator++);
+    lcd.print(":       ");
+    lcd.setCursor(2, radka);
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[sensor]);
+      lcd.print((int)tempUT[sensor++]);
+    }
+    lcd.setCursor(5, radka);
+    lcd.print("/");
+    if (tempUT[sensor+1]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      lcd.print((int)tempUT[sensor++]);    
+    }
+    lcd.setCursor(10, radka);
+    lcd.print(radiator++);
+    lcd.print(":       ");
+    lcd.setCursor(12, radka);
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[sensor]);
+      lcd.print((int)tempUT[sensor++]);    
+    }
+    lcd.setCursor(15, radka++);
+    lcd.print("/");
+    //addSpaces((int)tempUT[sensor]);
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      lcd.print((int)tempUT[sensor++]);    
+    }
+  }
+
+  lcd.setCursor(8, 0);
+  if (relay==HIGH) {
+    lcd.print("    ");
+  }else{
+    lcd.print("CER");
+  }
+}
+
+void displayTempErr() {
+  lcd.print("Err");
+}
+
+
+void addSpaces(int cislo) {
+  if (cislo<100 && cislo>0) lcd.print(" ");
+  if (cislo<10 && cislo>0) lcd.print(" ");
+  if (cislo<=0 && cislo>-10) lcd.print(" ");
+}
+
+
+#ifdef keypad
+uint8_t read8() {
+  Wire.beginTransmission(address);
+  Wire.requestFrom(address, 1);
+  data = Wire.read();
+  error = Wire.endTransmission();
+  return data;
+}
+
+uint8_t read(uint8_t pin) {
+  read8();
+  return (data & (1<<pin)) > 0;
+}
+
+void write8(uint8_t value) {
+  Wire.beginTransmission(address);
+  data = value;
+  Wire.write(data);
+  error = Wire.endTransmission();
+}
+
+void write(uint8_t pin, uint8_t value) {
+  read8();
+  if (value == LOW) {
+    data &= ~(1<<pin);
+  }else{
+    data |= (1<<pin);
+  }
+  write8(data); 
+}
+
+void keyPressed() {
+  byte row=0;
+  byte col=255;
+  byte b=127;
+  if (millis() - lastKeyPressed > repeatAfterMs) {
+    keyOld = 0;
+  }
+  for (byte i=0; i<4; i++) {
+    row=i;
+    b=~(255&(1<<i+4));
+    //Serial.println(b);
+    write8(b);
+    col = colTest(read8(), b);
+    if (col<255) {
+      key = hexaKeys[row][col];
+      if (key!=keyOld) {
+        lastKeyPressed = millis();
+        keyOld=hexaKeys[row][col];
+        Serial.print(row);
+        Serial.print(",");
+        Serial.print(col);
+        Serial.print("=");
+        Serial.println((char)key);
+      }
+      break;
+    }
+  }
+}
+
+byte colTest(byte key, byte b) {
+  if (key==b-8) return 0;
+  else if (key==b-4) return 1;
+  else if (key==b-2) return 2;
+  else if (key==b-1) return 3;
+  else return 255;
+}
 #endif
-}
 
-#ifndef arduino
-void waitOk()
-{
-  while(!stepOk)
-    delay(100);
- 
-  stepOk = false;
-}
 
-String macToStr(const uint8_t* mac) {
-  String result;
-  for (int i = 0; i < 6; ++i) {
-    result += String(mac[i], 16);
-    if (i < 5)
-      result += ':';
+#ifdef time
+//display time on LCD
+void lcd2digits(int number) {
+  if (number >= 0 && number < 10) {
+    lcd.write('0');
   }
-  return result;
+  lcd.print(number);
 }
 
-
-void myConnectedCb() {
-  Serial.println("connected to MQTT server");
-}
-
-void myDisconnectedCb() {
-  Serial.println("disconnected. try to reconnect...");
-  delay(500);
-  myMqtt.connect();
-}
-
-void myPublishedCb() {
-  Serial.println(" - published.");
-}
-
-void myDataCb(String& topic, String& data) {  
-  Serial.print(topic);
-  Serial.print(": ");
-  Serial.println(data);
-
-  if (topic == String("/Db/InstanceId"))
-  {
-    //instanceId = data;
-    stepOk = true;
+void print2digits(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
   }
-  else if (topic ==  String("/Db/"+instanceId+"/NewModule"))
-  {
-    storage.moduleId = data.toInt();
-    stepOk = true;
-  }
-  else if (topic == String("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter"))
-  {
-    stepOk = true;
-  }
-  else if (topic == String("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Settings.Icon1/NewParameter"))
-  {
-    stepOk = true;
-/*  } else if (topic == String("/Db/"+instanceId+"/3/Sensor.Parameter1")) {
-    storage.relay = (data == String("1"))? true: false;
-    Serial.println("SAVE relay state");
-    Serial.println(storage.relay);
-    saveConfig();*/
-  } else if (topic == String("/Db/"+instanceId+"/4/Sensor.Parameter1")) {
-    storage.tempON = data.toFloat();
-    Serial.print("SAVE TempON = ");
-    Serial.println(storage.tempON);
-    saveConfig();
-  } else if (topic == String("/Db/"+instanceId+"/6/Sensor.Parameter1")) {
-    storage.tempOFFDiff = data.toFloat();
-    Serial.print("SAVE tempOFFDiff = ");
-    Serial.println(storage.tempOFFDiff);
-    saveConfig();
-  } else if (topic == String("/Db/"+instanceId+"/5/Sensor.Parameter1")) {
-    storage.tempAlarm = data.toFloat();
-    Serial.print("SAVE TempAlarm = ");
-    Serial.println(storage.tempAlarm);
-    saveConfig();
+  Serial.print(number);
+}
+
+
+void displayTime() {
+  //Serial.print(RTC.get());
+  lcd.setCursor(12, 0); //col,row
+  if (RTC.read(tm)) {
+    lcd2digits(tm.Hour);
+    lcd.write(':');
+    lcd2digits(tm.Minute);
+    lcd.write(':');
+    lcd2digits(tm.Second);
+  } else {
+    lcd.write('        ');
   }
 }
+/*
+//time functions
+bool getTime(const char *str) {
+  int Hour, Min, Sec;
 
-void setMQTT() {
-  String clientName;
-  //clientName += "esp8266-";
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  clientName += macToStr(mac);
-  clientName += "-";
-  clientName += String(micros() & 0xff, 16);
-  myMqtt.setClientId((char*) clientName.c_str());
-
-
-  Serial.print("MQTT client id:");
-  Serial.println(clientName);
-
-  // setup callbacks
-  myMqtt.onConnected(myConnectedCb);
-  myMqtt.onDisconnected(myDisconnectedCb);
-  myMqtt.onPublished(myPublishedCb);
-  myMqtt.onData(myDataCb);
-  
-  //////Serial.println("connect mqtt...");
-  myMqtt.setUserPwd(EIOTCLOUD_USERNAME, EIOTCLOUD_PASSWORD);  
-  myMqtt.connect();
-
-  delay(500);
-  
-  //get instance id
-  //////Serial.println("suscribe: Db/InstanceId");
-  myMqtt.subscribe("/Db/InstanceId");
-
-  waitOk();
-
-
-  Serial.print("ModuleId: ");
-  Serial.println(storage.moduleId);
-
-
-  //create module if necessary 
-  if (storage.moduleId == 0)
-  {
-    //create module
-
-    Serial.println("create module: Db/"+instanceId+"/NewModule");
-
-    myMqtt.subscribe("/Db/"+instanceId+"/NewModule");
-    waitOk();
-      
-    // create Sensor.Parameter1
-    
-    Serial.println("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");    
-
-    myMqtt.subscribe("/Db/"+instanceId+"/"+String(storage.moduleId)+ "/Sensor.Parameter1/NewParameter");
-    waitOk();
-
-    // set module type
-        
-    Serial.println("Set module type");    
-
-    valueStr = "MT_DIGITAL_OUTPUT";
-    topic  = "/Db/" + instanceId + "/" + String(storage.moduleId) + "/ModuleType";
-    result = myMqtt.publish(topic, valueStr);
-    delay(100);
-
-    // save new module id
-    saveConfig();
-  }
-
-  
-  //tempON
-  valueStr = String(storage.tempON);
-  topic  = "/Db/"+instanceId+"/4/Sensor.Parameter1";
-  Serial.print("Publish " + topic);
-  result = myMqtt.publish(topic, valueStr);
-  delay(1000);
-  //tempOFF
-  valueStr = String(storage.tempOFFDiff);
-  topic  = "/Db/"+instanceId+"/6/Sensor.Parameter1";
-  Serial.print("Publish " + topic);
-  result = myMqtt.publish(topic, valueStr);
-  delay(1000);
-  //tempOVER
-  valueStr = String(storage.tempAlarm);
-  topic  = "/Db/"+instanceId+"/5/Sensor.Parameter1";
-  Serial.print("Publish " + topic);
-  result = myMqtt.publish(topic, valueStr);
-  delay(1000);
-
-  
-  //switchState = storage.state;
-  Serial.print("Subscribe ");
-  myMqtt.subscribe("/Db/"+instanceId+"/4/Sensor.Parameter1");
-  myMqtt.subscribe("/Db/"+instanceId+"/5/Sensor.Parameter1");
-  myMqtt.subscribe("/Db/"+instanceId+"/6/Sensor.Parameter1");
-  Serial.println(" OK.");
+  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
+  tm.Hour = Hour;
+  tm.Minute = Min;
+  tm.Second = Sec;
+  return true;
 }
+
+bool getDate(const char *str) {
+  char Month[12];
+  int Day, Year;
+  uint8_t monthIndex;
+
+  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
+  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
+    if (strcmp(Month, monthName[monthIndex]) == 0) break;
+  }
+  if (monthIndex >= 12) return false;
+  tm.Day = Day;
+  tm.Month = monthIndex + 1;
+  tm.Year = CalendarYrToTm(Year);
+  return true;
+}
+*/
+//zabranuje zatuhnuti cerpadla v lete
+void testPumpProtect() {
+  //if (storage.lastPumpRun
+}
+
+void printDateTime() {
+  Serial.print("UNIX Time: ");
+  Serial.print(RTC.get());
+
+  if (! RTC.read(tm)) {
+    Serial.print("  Time = ");
+    print2digits(tm.Hour);
+    Serial.write(':');
+    print2digits(tm.Minute);
+    Serial.write(':');
+    print2digits(tm.Second);
+    Serial.print(", Date (D/M/Y) = ");
+    Serial.print(tm.Day);
+    Serial.write('/');
+    Serial.print(tm.Month);
+    Serial.write('/');
+    Serial.print(tmYearToCalendar(tm.Year));
+    Serial.print(", DoW = ");
+    Serial.print(tm.Wday);
+    Serial.println();
+  } else {
+#ifdef DS1302
+    Serial.println("DS1302 read error!  Please check the circuitry.");
+#endif
+#ifdef DS1307
+    Serial.println("DS1307 read error!  Please check the circuitry.");
+#endif
+    Serial.println();
+  }
+}
+
+
+void setTime() {
+  static time_t tLast;
+  time_t t;
+  tmElements_t tm;
+  //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
+  if (Serial.available() >= 12) {
+      //note that the tmElements_t Year member is an offset from 1970,
+      //but the RTC wants the last two digits of the calendar year.
+      //use the convenience macros from Time.h to do the conversions.
+      int y = Serial.parseInt();
+      if (y >= 100 && y < 1000)
+        Serial.println("Error: Year must be two digits or four digits!");
+      else {
+        if (y >= 1000)
+          tm.Year = CalendarYrToTm(y);
+        else    //(y < 100)
+          tm.Year = y2kYearToTm(y);
+          tm.Month = Serial.parseInt();
+          tm.Day = Serial.parseInt();
+          tm.Hour = Serial.parseInt();
+          tm.Minute = Serial.parseInt();
+          tm.Second = Serial.parseInt();
+          t = makeTime(tm);
+    //use the time_t value to ensure correct weekday is set
+        if(RTC.set(t) == 0) { // Success
+          setTime(t);
+          Serial.println("RTC set");
+          //printDateTime(t);
+          //Serial.println();
+        }else
+          Serial.println("RTC set failed!");
+          //dump any extraneous input
+          while (Serial.available() > 0) Serial.read();
+      }
+  }
+}
+
 #endif

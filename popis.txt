@@ -49,8 +49,7 @@ signal pro LED èerpadla
 ----------------------------------------------------------------------------------------------------------
 
 TODO
-- vymìnit relé za 5V SSR
-- pøipojit buzzer
+
 
 BEEP
 tempAlarm   - tempAlarm+4       100,40,1-5,5
@@ -144,6 +143,15 @@ KEYBOARD
 * 0 # D
 -------
 
-        0|1|2|3|4|5|6|7
+0|1|2|3|4|5|6|7
 PFC8574 
 
+MENU
+----
+- zobrazení a nastavení spínací teploty tempON
+- zobrazení a nastavení diference vypínací teploty tempOFFDiff
+- zobrazení a nastavení teploty alarmu tempAlarm
+- zobrazení a nastavení hodin /hodiny, minuty, vteøiny/
+- zobrazení a nastavení datumu /den, mìsíc, rok/
+- zobrazení a mapování teplot radiátorù
+- zobrazení datumu a èasu posledního bìhu èerpadla

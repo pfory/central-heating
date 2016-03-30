@@ -1,16 +1,20 @@
 #include <SevSeg.h>
-#include <wire.h>
+#include <Wire.h>
 
 SevSeg sevseg; //Instantiate a seven segment controller object
-/*byte counter=0;
+byte counter=0;
 long lastMillis=0;
-*/
+
 byte temperature;
 
-void setup()
-{
+void setup() {
+  Serial.begin(9600);
+  Wire.begin(8);   
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH);
+  Wire.onReceive(receiveEvent); // register event
   byte numDigits = 2;   
-  byte digitPins[] = {10,11}; //Digits: 1,2,3,4 <--put one resistor (ex: 220 Ohms, or 330 Ohms, etc, on each digit pin)
+  byte digitPins[] = {9,10}; //Digits: 1,2,3,4 <--put one resistor (ex: 220 Ohms, or 330 Ohms, etc, on each digit pin)
   byte segmentPins[] = {2, 3, 4, 5, 6, 7, 8, 0}; //Segments: A,B,C,D,E,F,G,Period
 
   sevseg.begin(COMMON_ANODE, numDigits, digitPins, segmentPins);
@@ -20,24 +24,32 @@ void setup()
                             //I am choosing a "brightness" of 10 because it increases the max update rate to approx. 1/(200us*8) = 625Hz.
                             //This is preferable, as it decreases aliasing when recording the display with a video camera....I think.
   
-  Wire.begin(8);                // join i2c bus with address #8
-  Wire.onReceive(receiveEvent); // register event
+ 
+ 
+
+ 
+  digitalWrite(13, LOW);
 }
 
-void loop()
-{
-/*  if (millis()-lastMillis>=1000) {
+void loop() {
+  if (millis()-lastMillis>=1000) {
     lastMillis=millis();
-    sevseg.setNumber(counter++, 0);
-    if (counter==100)
-      counter=0;
+    sevseg.setNumber(temperature, 0);
+    //Serial.println(temperature);
+    
+    /*Wire.requestFrom(8, 6);    // request 6 bytes from slave device #8
+    while (Wire.available()) { // slave may send less than requested
+      char c = Wire.read(); // receive a byte as character
+      Serial.print(c);         // print the character
+    }
+    */
   }
-*/
-  sevseg.setNumber(temperature, 0);
+  //sevseg.setNumber(temperature, counter);
   sevseg.refreshDisplay(); // Must run repeatedly; don't use blocking code (ex: delay()) in the loop() function or this won't work right
 }
 
-
 void receiveEvent(int howMany) {
+  digitalWrite(13, HIGH);
   temperature = Wire.read();    // receive byte as an integer
+  digitalWrite(13, LOW);
 }
