@@ -1,119 +1,45 @@
---Init  Centra and solar heating
-DeviceID="esp06"  
-RoomID="Corridor"  
+--Init  
+base = "/home/Corridor/esp06/"
+deviceID = "ESP8266 CentralHeating "..node.chipid()
 
-tINSolar                   = 0
-tOUTSolar                  = 0
-tPumpSolar                 = 0    
-tBojler                    = 0
-tINCentralHeating          = 0
-tOUTCentralHeating         = 0
-tPumpCentralHeating        = 0
-tRad1IN                    = 0
-tRad1OUT                   = 0
-tRad2IN                    = 0
-tRad2OUT                   = 0
-tRad3IN                    = 0
-tRad3OUT                   = 0
-tRad4IN                    = 0
-tRad4OUT                   = 0
-tRad5IN                    = 0
-tRad5OUT                   = 0
-tRad6IN                    = 0
-tRad6OUT                   = 0
-pumpSolarStatus            = "ON"
-pumpCentralHeatingStatus   = "ON"
-tPumpCentralHeating        = 0
 
-versionSWSolar             = "0.82"
-versionSWCentral           = "0.4"
 heartBeat                  = 0
-
 
 wifi.setmode(wifi.STATION)
 wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")
 
-Broker="213.192.58.66"  
+Broker="88.146.202.186"  
+
+received = ""
 
 pinLed = 4
 gpio.mode(pinLed,gpio.OUTPUT)  
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSWHeating         = 0.1
-versionSWString   = "Heating /Solar and central/ v" 
-print(versionSWString .. versionSWHeating)
+heartBeat = node.bootreason()
+print("Boot reason:")
+print(heartBeat)
 
-function sendData()
-  print("I am sending data from Solar unit to OpenHab")
-  t = math.random (0, 350)
-  t = t/10.0
-  print(t)
-  tINSolar = t
-  tOUTSolar = t
-  tPumpSolar = t
-  tBojler = t
-  tINCentralHeating = t
-  tOUTCentralHeating = t
-  tPumpCentralHeating = t
-  tRad1IN = t
-  tRad1OUT = t
-  tRad2IN = t
-  tRad2OUT = t
-  tRad3IN = t
-  tRad3OUT = t
-  tRad4IN = t
-  tRad4OUT = t
-  tRad5IN = t
-  tRad5OUT = t
-  tRad6IN = t
-  tRad6OUT = t
-
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tIN",                string.format("%.1f",tINSolar),0,0)  
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tOUT",               string.format("%.1f",tOUTSolar),0,0)  
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tPump",              string.format("%.1f",tPumpSolar),0,0)  
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tBojler",            string.format("%.1f",tBojler),0,0)  
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/com",                pumpSolarStatus,0,0)  
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/HeartBeat",          heartBeat,0,0)
-  --m:publish("/home/".. RoomID .."/" .. DeviceID .. "/VersionSWSolar",     versionSWSolar,0,0)
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/VersionSWCentral",     versionSWCentral,0,0)
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/VersionSWHeating",     versionSWHeating,0,0)
-  print("I am sending data from Central Heating unit to OpenHab")
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tINKamna",             string.format("%.1f",tINCentralHeating),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tOUTKamna",            string.format("%.1f",tOUTCentralHeating),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tPumpKamna",           string.format("%.1f",tPumpCentralHeating),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/sPumpKamna",           pumpCentralHeatingStatus,0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad1IN",              string.format("%.1f",tRad1IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad1OUT",             string.format("%.1f",tRad1OUT),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad2IN",              string.format("%.1f",tRad2IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad2OUT",             string.format("%.1f",tRad2OUT),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad3IN",              string.format("%.1f",tRad3IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad3OUT",             string.format("%.1f",tRad3OUT),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad4IN",              string.format("%.1f",tRad4IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad4OUT",             string.format("%.1f",tRad4OUT),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad5IN",              string.format("%.1f",tRad5IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad5OUT",             string.format("%.1f",tRad5OUT),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad6IN",              string.format("%.1f",tRad6IN),0,0)  
-  m:publish("/home/".. RoomID .."/" .. DeviceID .. "/tRad6OUT",             string.format("%.1f",tRad6OUT),0,0)  
-  
-  if heartBeat==0 then heartBeat=1
-  else heartBeat=0
-  end
-end
+versionSW                  = "0.4"
+versionSWString            = "Central Heating v" 
+print(versionSWString .. versionSW)
 
 function reconnect()
   print ("Waiting for Wifi")
+  heartBeat = 10
   if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
     print ("Wifi Up!")
     tmr.stop(1) 
     m:connect(Broker, 31883, 0, function(conn) 
+      print(wifi.sta.getip())
       print("Mqtt Connected to:" .. Broker) 
       mqtt_sub() --run the subscription function 
     end)
   end
 end
 
-m = mqtt.Client("ESP8266".. DeviceID, 180, "datel", "hanka")  
-m:lwt("/lwt", "ESP8266", 0, 0)  
+m = mqtt.Client(deviceID, 180, "datel", "hanka12")  
+m:lwt("/lwt", deviceID, 0, 0)  
 m:on("offline", function(con)   
   print ("Mqtt Reconnecting...")   
   tmr.alarm(1, 10000, 1, function()  
@@ -121,31 +47,150 @@ m:on("offline", function(con)
   end)
 end)  
 
+uart.on("data", 0,
+  function(data)
+    --print("receive from uart:", data)
+    received = received..data
+end, 0)
+
+function trim(s)
+  return (s:gsub("^%s*(.-)%s*$", "%1"))
+end
+
+function sendData()
+  objProp = {}
+  prikaz = ""
+  received=trim(received)
+  if trim(received)=="" then print("empty data") return end
+  --received = "#0;30.00#1;39.60#2;99.50#3;48.10#4;107.20#5;97.80#6;90.10#7;89.10#8;63.40#9;77.40#A;87.70#B;39.10#I;70.30#O;28.00#R;0$3419268668*"
+  print(received)
+  if string.find(received,"*")==nil then return end
+  index = 1
+  for value in string.gmatch(received,"\#%w?\;%d*[\.%d]*") do 
+      objProp [index] = value
+      prikaz = string.sub(value, 2, 2)
+      if prikaz == "I" then
+       tINKamna = string.sub(value, 4, 99)
+      end
+      if prikaz == "O" then
+       tOUTKamna = string.sub(value, 4, 99)
+      end
+      if prikaz == "0" then
+       t1 = string.sub(value, 4, 99)
+      end
+      if prikaz == "1" then
+       t2 = string.sub(value, 4, 99)
+      end
+      if prikaz == "2" then
+       t3 = string.sub(value, 4, 99)
+      end
+      if prikaz == "3" then
+       t4 = string.sub(value, 4, 99)
+      end
+      if prikaz == "4" then
+       t5 = string.sub(value, 4, 99)
+      end
+      if prikaz == "5" then
+       t6 = string.sub(value, 4, 99)
+      end
+      if prikaz == "6" then
+       t7 = string.sub(value, 4, 99)
+      end
+      if prikaz == "7" then
+       t8 = string.sub(value, 4, 99)
+      end
+      if prikaz == "8" then
+       t9 = string.sub(value, 4, 99)
+      end
+      if prikaz == "9" then
+       t10 = string.sub(value, 4, 99)
+      end
+      if prikaz == "A" then
+       t11 = string.sub(value, 4, 99)
+      end
+      if prikaz == "B" then
+       t12 = string.sub(value, 4, 99)
+      end
+
+      if prikaz == "R" then
+        --print(string.sub(value, 4, 4))
+        if string.sub(value, 4, 4) == "1" then
+          sPumpKamna = "ON"
+        else
+          sPumpKamna = "OFF"
+        end
+      end
+     
+      index = index + 1
+  end
+  print(tINKamna)
+  print(tOUTKamna)
+  print(sPumpKamna)
+  print(t1)
+  print(t2)
+  print(t3)
+  print(t4)
+  print(t5)
+  print(t6)
+  print(t7)
+  print(t8)
+  print(t9)
+  print(t10)
+  print(t11)
+  print(t12)
+  print("I am sending data from Solar unit to OpenHab")
+  received=""
+
+  m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
+  m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
+  m:publish(base.."sPumpKamna",             sPumpKamna,0,0)  
+  m:publish(base.."t1",                     string.format("%.1f",t1),0,0)  
+  m:publish(base.."t2",                     string.format("%.1f",t2),0,0)  
+  m:publish(base.."t3",                     string.format("%.1f",t3),0,0)  
+  m:publish(base.."t4",                     string.format("%.1f",t4),0,0)  
+  m:publish(base.."t5",                     string.format("%.1f",t5),0,0)  
+  m:publish(base.."t6",                     string.format("%.1f",t6),0,0)  
+  m:publish(base.."t7",                     string.format("%.1f",t7),0,0)  
+  m:publish(base.."t8",                     string.format("%.1f",t8),0,0)  
+  m:publish(base.."t9",                     string.format("%.1f",t9),0,0)  
+  m:publish(base.."t10",                    string.format("%.1f",t10),0,0)  
+  m:publish(base.."t11",                    string.format("%.1f",t11),0,0)  
+  m:publish(base.."t12",                    string.format("%.1f",t12),0,0)  
+  m:publish(base.."VersionSWCentral",       versionSW,0,0)  
+  m:publish(base.."HeartBeat",              heartBeat,0,0)  
+  if heartBeat==0 then heartBeat=1
+  else heartBeat=0
+  end
+end
+
+
 function mqtt_sub()  
-  m:subscribe("/home/".. RoomID .."/" .. DeviceID .. "/p1/Energy",0, function(conn)   
-    print("Mqtt Subscribed to OpenHAB feed for device " .. DeviceID .. "(Soalr and Cenral unit)")  
+  m:subscribe(base,0, function(conn)   
+    print("Mqtt Subscribed to OpenHAB feed for device "..deviceID)  
   end)  
-end  
+end
 
  -- on publish message receive event  
 m:on("message", function(conn, topic, data)   
   print("Received:" .. topic .. ":" .. data) 
 end)  
 
+tmr.alarm(0, 5000, 1, function() 
+  parseData()
+end)
+
 tmr.alarm(0, 1000, 1, function() 
   print ("Connecting to Wifi... ")
   if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
     print ("Wifi connected")
     tmr.stop(0) 
-    --print ("Read config file... ")
-    --file.open("config.ini", "r")
-    --s = file.readline()
-    --pulseTotal = string.sub(s, 12, 20)
-    --print(pulseTotal)
-    --file.close()  
     m:connect(Broker, 31883, 0, function(conn) 
-      print("Mqtt Connected to:" .. Broker) 
-      tmr.alarm(2, 30000, 1, function() sendData() end )
+      mqtt_sub() --run the subscription function 
+      print(wifi.sta.getip())
+      print("Mqtt Connected to:" .. Broker.." - "..base) 
+      tmr.alarm(0, 20000, tmr.ALARM_AUTO, function()
+        sendData() 
+      end)
     end) 
   end
 end)
