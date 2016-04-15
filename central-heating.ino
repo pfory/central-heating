@@ -24,9 +24,9 @@ keyboard
 
 Pro Mini 328 Layout
 ------------------------------------------
-A0              - DS1302 CE
-A1              - DS1302 IO
-A2              - DS1302 CLK
+A0              - 
+A1              - 
+A2              - 
 A3              - free
 A4              - I2C display SDA 0x20, I2C Central heating unit 0x02
 A5              - I2C display SCL 0x20, I2C Central heating unit 0x02
@@ -45,16 +45,6 @@ D11             - free
 D12             - free
 D13             - free
 --------------------------------------------------------------------------------------------------------------------------
-
-
-//Rad1 - 
-//Rad2 - 
-//Rad3
-//Rad4 - BedRoomNew
-//Rad5 - LivingRoom OUT
-//Rad6 - LivingRoom IN
-//Rad7 -
-//Rad8 - BedRoomNew
 */
 
 #include <Wire.h>
@@ -89,17 +79,18 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
-const unsigned long   measDelay           = 5000; //in ms
+const unsigned long   measDelay           = 10000; //in ms
 unsigned long         lastMeas            = measDelay;
 const unsigned long   measTime            = 750; //in ms
 const unsigned long   sendDelay           = 20000; //in ms
 unsigned long         lastSend            = sendDelay;
 float                 tempOUT             = 0.f;
 float                 tempIN              = 0.f;
-float                 tempUT[10];     
+float                 tempUT[12];     
 bool                  relay               = HIGH;
 const unsigned long   pumpProtect         = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
 const unsigned long   pumpProtectRun      = 300000;     //1000*60*5;     //in ms = 5 min
+bool                  firstMeasComplete   = false;
 #define TEMP_ERR -127
                
 unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze byt vice
@@ -111,6 +102,8 @@ unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze 
 #define time
 #endif
 
+
+/*
 #ifdef DS1302
 #include <DS1302RTC.h>
 // Set pins:  CE, IO,CLK
@@ -118,7 +111,7 @@ DS1302RTC RTC(A0, A1, A2);
 #define time
 //set time => seriovy monitor zadat rrrr,m,d,h,m,s napr. 2016,2,7,23,30,00
 #endif
-
+*/
 
 #ifdef time
 #include <Time.h>
@@ -197,6 +190,25 @@ char hexaKeys[ROWS][COLS]                 = {
 };
 #endif
 
+#include <SoftwareSerial.h>
+#define RX A0
+#define TX A1
+SoftwareSerial mySerial(RX, TX);
+
+#include <avr/pgmspace.h>
+unsigned long crc;
+const PROGMEM uint32_t crc_table[16] = {
+    0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+    0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+    0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+    0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+};
+#define START_BLOCK       '#'
+#define DELIMITER         ';'
+#define END_BLOCK         '$'
+#define END_TRANSMITION   '*'
+
+
 //SW name & version
 float const   versionSW                   = 0.4;
 char  const   versionSWString[]           = "Central heat v"; 
@@ -216,8 +228,9 @@ void setup(void)
   lcd.clear();
   lcd.print(versionSWString);
   lcd.print(versionSW);
+  mySerial.begin(9600);
   
-#ifdef DS1302
+/*#ifdef DS1302
   if (RTC.haltRTC()) {
     Serial.println("Clock stopped!");
     Serial.println("The DS1302 is stopped.");
@@ -233,7 +246,36 @@ void setup(void)
 
   delay ( 2000 );
 #endif
-  
+*/  
+
+#ifdef DS1307
+  if (RTC.read(tm)) {
+    Serial.print("Ok, Time = ");
+    print2digits(tm.Hour);
+    Serial.write(':');
+    print2digits(tm.Minute);
+    Serial.write(':');
+    print2digits(tm.Second);
+    Serial.print(", Date (D/M/Y) = ");
+    Serial.print(tm.Day);
+    Serial.write('/');
+    Serial.print(tm.Month);
+    Serial.write('/');
+    //Serial.print(tmYearToCalendar(tm.Year));
+    Serial.print(tm.Year);
+    Serial.println();
+  } else {
+    if (RTC.chipPresent()) {
+      Serial.println("The DS1307 is stopped.  Please run the SetTime");
+      Serial.println("example to initialize the time and begin running.");
+      Serial.println();
+    } else {
+      Serial.println("DS1307 read error!  Please check the circuitry.");
+      Serial.println();
+    }
+  }
+#endif
+
   // Setup time library  
   Serial.print("RTC Sync");
   setSyncProvider(RTC.get);          // the function to get the time from the RTC
@@ -407,26 +449,8 @@ void loop(void) {
     displayTemp();
     
     if (millis() - lastSend >= sendDelay) {
+      sendDataSerial();
       lastSend = millis();
-
-      //send to solar unit via I2C
-      //data sended:
-      //I tempIN 
-      //O tempOUT
-      //1-x tempRad1-x
-      //R relay status
-      Wire.beginTransmission(9);
-      Wire.write("I");
-      Wire.write((int)tempIN);
-      Wire.write("O");
-      Wire.write((int)tempOUT);
-      Wire.write("R");
-      Wire.write(relay);
-      for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-        Wire.write(i+1);
-        Wire.write((int)tempUT[i]);
-      }
-      Wire.endTransmission();
     }
 
     if (tempOUT >= storage.tempAlarm) {
@@ -475,8 +499,17 @@ void getTemp() {
     for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
       tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
     }
-    
+   
     //remaping temp
+//Rad1 - LivingRoom 
+//Rad2 - BedroomNew
+//Rad3 - WorkRoom
+//Rad4 - BedRoomOld
+//Rad5 - Bojler
+//Rad6 - 
+//Rad7 -
+//Rad8 - 
+
     tempUT[0]=tempUTRaw[5];
     tempUT[1]=tempUTRaw[4];
     tempUT[2]=tempUTRaw[3];
@@ -485,10 +518,12 @@ void getTemp() {
     tempUT[5]=tempUTRaw[1];
     tempUT[6]=tempUTRaw[2];
     tempUT[7]=tempUTRaw[6];
-/*  tempUT[8]=tempUTRaw[];
-    tempUT[9]=tempUTRaw[];
-    tempUT[10]=tempUTRaw[];
-    tempUT[11]=tempUTRaw[];*/
+    tempUT[8]=tempUTRaw[7];
+    tempUT[9]=tempUTRaw[8];
+
+    firstMeasComplete=true;
+    /*tempUT[10]=0;
+    tempUT[11]=0;*/
   }
 }
 
@@ -561,35 +596,34 @@ void displayTemp() {
   for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+4) {
     lcd.setCursor(0, radka);
     lcd.print(radiator++);
-    lcd.print(":       ");
+    lcd.print(":        ");
     lcd.setCursor(2, radka);
     if (tempUT[sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
       addSpaces((int)tempUT[sensor]);
-      lcd.print((int)tempUT[sensor++]);
+      lcd.print((int)tempUT[sensor]);
     }
     lcd.setCursor(5, radka);
     lcd.print("/");
-    if (tempUT[sensor+1]==TEMP_ERR) {
+    if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
-      lcd.print((int)tempUT[sensor++]);    
+      lcd.print((int)tempUT[sensor]);    
     }
     lcd.setCursor(10, radka);
     lcd.print(radiator++);
-    lcd.print(":       ");
+    lcd.print(":        ");
     lcd.setCursor(12, radka);
     if (tempUT[sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
-      addSpaces((int)tempUT[sensor]);
-      lcd.print((int)tempUT[sensor++]);    
+      addSpaces((int)tempUT[++sensor]);
+      lcd.print((int)tempUT[sensor]);    
     }
     lcd.setCursor(15, radka++);
     lcd.print("/");
-    //addSpaces((int)tempUT[sensor]);
-    if (tempUT[sensor]==TEMP_ERR) {
+    if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
       lcd.print((int)tempUT[sensor++]);    
@@ -770,9 +804,10 @@ void printDateTime() {
     Serial.print(tm.Wday);
     Serial.println();
   } else {
-#ifdef DS1302
+/*#ifdef DS1302
     Serial.println("DS1302 read error!  Please check the circuitry.");
 #endif
+*/
 #ifdef DS1307
     Serial.println("DS1307 read error!  Please check the circuitry.");
 #endif
@@ -784,6 +819,7 @@ void printDateTime() {
 void setTime() {
   static time_t tLast;
   time_t t;
+  
   tmElements_t tm;
   //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
   if (Serial.available() >= 12) {
@@ -819,3 +855,131 @@ void setTime() {
 }
 
 #endif
+
+void sendDataSerial() {
+  //send to ESP8266 unit via UART
+  //data sended:
+  //I tempIN 
+  //O tempOUT
+  //1-x tempRad1-x
+  //R relay status
+
+  //data sended:
+  //#0;25.31#1;25.19#2;5.19#I;25.10#O;50.5#R;1$3600177622*
+
+  if (firstMeasComplete==false) return;
+
+  Serial.print("DATA:");
+  digitalWrite(LEDPIN,HIGH);
+  crc = ~0L;
+  for (byte i=0;i<sensorsUT.getDeviceCount(); i++) {
+    send(START_BLOCK);
+    send(i);
+    send(DELIMITER);
+    send(tempUT[i]);
+  }
+  send(START_BLOCK);
+  send('I');
+  send(DELIMITER);
+  send(tempIN);
+
+  send(START_BLOCK);
+  send('O');
+  send(DELIMITER);
+  send(tempOUT);
+
+  send(START_BLOCK);
+  send('R');
+  send(DELIMITER);
+  if (relay==LOW)
+    send('1');
+  else
+    send('0');
+
+  send(END_BLOCK);
+
+  mySerial.print(crc);
+  mySerial.print(END_TRANSMITION);
+  mySerial.flush();
+}
+
+void send(char s) {
+  send(s, ' ');
+}
+
+
+void send(char s, char type) {
+  if (type=='X') {
+#ifdef serial
+    Serial.print(s, HEX);
+#endif
+    mySerial.print(s, HEX);
+  }
+  else {
+#ifdef serial
+    Serial.print(s);
+#endif
+    mySerial.print(s);
+  }
+  crc_string(byte(s));
+}
+
+void send(byte s) {
+  send(s, ' ');
+}
+
+void send(byte s, char type) {
+  if (type=='X') {
+#ifdef serial
+    Serial.print(s, HEX);
+#endif
+    mySerial.print(s, HEX);
+  }
+  else {
+#ifdef serial
+    Serial.print(s);
+#endif
+    mySerial.print(s);
+  }
+  crc_string(s);
+}
+
+void crc_string(byte s)
+{
+  crc = crc_update(crc, s);
+  crc = ~crc;
+}
+
+unsigned long crc_update(unsigned long crc, byte data)
+{
+    byte tbl_idx;
+    tbl_idx = crc ^ (data >> (0 * 4));
+    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+    tbl_idx = crc ^ (data >> (1 * 4));
+    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+    return crc;
+}
+
+
+void send(unsigned long s) {
+#ifdef serial
+  Serial.print(s);
+#endif
+  mySerial.print(s);
+}
+
+void send(unsigned int s) {
+#ifdef serial
+  Serial.print(s);
+#endif
+  mySerial.print(s);
+}
+
+void send(float s) {
+  char tBuffer[8];
+  dtostrf(s,0,2,tBuffer);
+  for (byte i=0; i<8; i++) {
+    if (tBuffer[i]==0) break;
+    send(tBuffer[i]);
+  }
+}
