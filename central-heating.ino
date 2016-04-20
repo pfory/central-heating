@@ -194,6 +194,7 @@ char hexaKeys[ROWS][COLS]                 = {
 #define RX A0
 #define TX A1
 SoftwareSerial mySerial(RX, TX);
+#define serial
 
 #include <avr/pgmspace.h>
 unsigned long crc;
@@ -898,9 +899,11 @@ void sendDataSerial() {
 
   send(END_BLOCK);
 
-  mySerial.print(crc);
-  mySerial.print(END_TRANSMITION);
+  //mySerial.print(crc);
+  send(END_TRANSMITION);
   mySerial.flush();
+ 
+  Serial.println();
 }
 
 void send(char s) {
