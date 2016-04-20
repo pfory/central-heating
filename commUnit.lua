@@ -4,6 +4,7 @@ deviceID = "ESP8266 CentralHeating "..node.chipid()
 
 wifi.setmode(wifi.STATION)
 wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")
+wifi.sta.autoconnect(1)
 
 Broker="88.146.202.186"  
 sendDelay = 60000 --ms
