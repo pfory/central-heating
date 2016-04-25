@@ -25,7 +25,7 @@ Central heating
 1x DC-DC mìnic 5V pro displej
 1x displej 20x4
 1x klávesnice 4x4
-1x buzzer
+1x buzzer 
 
 
 Externí displej Seg7 - v obýváku na zdi
