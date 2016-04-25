@@ -24,8 +24,8 @@ keyboard
 
 Pro Mini 328 Layout
 ------------------------------------------
-A0              - 
-A1              - 
+A0              - RX from CommUnit
+A1              - TX to CommUnit
 A2              - 
 A3              - free
 A4              - I2C display SDA 0x20, I2C Central heating unit 0x02
@@ -414,24 +414,12 @@ void loop(void) {
     delay(measTime);
     getTemp();
     printTemp();
+    //poslani teploty do LED displeje
     Wire.beginTransmission(8);
     //tempOUT=random(0,100);
     Wire.write((byte)tempOUT);
     Wire.endTransmission();
 
-    /*
-    //zapis casu do solaru
-    Wire.beginTransmission(10);
-    Wire.write();
-    Wire.endTransmission();
-    
-    //zadost o data ze solaru
-    Wire.beginTransmission(10);
-    Wire.write();
-    Wire.endTransmission();
-    */
-
-    
     if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
       //Serial.println("Relay OFF");
       relay = HIGH;

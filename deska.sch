@@ -3943,7 +3943,7 @@ Grid 5.08 mm&lt;p&gt;
 <part name="Q2" library="transistor-npn" deviceset="BC547*" device=""/>
 <part name="R5" library="rcl" deviceset="R-EU_" device="0207/7" value="1k"/>
 <part name="R6" library="rcl" deviceset="R-EU_" device="0207/7" value="1k"/>
-<part name="I2C" library="con-wago-508" deviceset="W237-04P" device=""/>
+<part name="I2CDISP" library="con-wago-508" deviceset="W237-04P" device=""/>
 <part name="GND2" library="supply1" deviceset="GND" device=""/>
 <part name="UART" library="con-wago-508" deviceset="W237-3E" device=""/>
 <part name="GND3" library="supply1" deviceset="GND" device=""/>
@@ -3953,6 +3953,10 @@ Grid 5.08 mm&lt;p&gt;
 <part name="P+4" library="supply1" deviceset="+5V" device=""/>
 <part name="GND4" library="supply1" deviceset="GND" device=""/>
 <part name="GND5" library="supply1" deviceset="GND" device=""/>
+<part name="I2CKEYB" library="con-wago-508" deviceset="W237-04P" device=""/>
+<part name="I2CHOUR" library="con-wago-508" deviceset="W237-04P" device=""/>
+<part name="COMMUNIT" library="con-wago-508" deviceset="W237-02P" device=""/>
+<part name="LEDDISP" library="con-wago-508" deviceset="W237-04P" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -3969,8 +3973,8 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="LED" gate="-1" x="12.7" y="33.02" rot="R90"/>
 <instance part="LED" gate="-2" x="10.16" y="33.02" rot="R90"/>
 <instance part="R4" gate="G$1" x="20.32" y="38.1" rot="R180"/>
-<instance part="BUZZER" gate="-1" x="106.68" y="58.42" rot="R180"/>
-<instance part="BUZZER" gate="-2" x="106.68" y="60.96" rot="R180"/>
+<instance part="BUZZER" gate="-1" x="114.3" y="58.42" rot="R180"/>
+<instance part="BUZZER" gate="-2" x="114.3" y="60.96" rot="R180"/>
 <instance part="TIN" gate="-1" x="-7.62" y="93.98"/>
 <instance part="TIN" gate="-2" x="-7.62" y="91.44"/>
 <instance part="TIN" gate="-3" x="-7.62" y="88.9"/>
@@ -3980,14 +3984,14 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="TUT" gate="-1" x="-7.62" y="63.5"/>
 <instance part="TUT" gate="-2" x="-7.62" y="60.96"/>
 <instance part="TUT" gate="-3" x="-7.62" y="58.42"/>
-<instance part="Q1" gate="G$1" x="93.98" y="50.8"/>
+<instance part="Q1" gate="G$1" x="106.68" y="40.64"/>
 <instance part="Q2" gate="G$1" x="-22.86" y="43.18" rot="MR0"/>
 <instance part="R5" gate="G$1" x="20.32" y="50.8" rot="R180"/>
-<instance part="R6" gate="G$1" x="86.36" y="50.8" rot="R180"/>
-<instance part="I2C" gate="-1" x="96.52" y="86.36" rot="R270"/>
-<instance part="I2C" gate="-2" x="91.44" y="86.36" rot="R270"/>
-<instance part="I2C" gate="-3" x="88.9" y="86.36" rot="R270"/>
-<instance part="I2C" gate="-4" x="86.36" y="86.36" rot="R270"/>
+<instance part="R6" gate="G$1" x="86.36" y="48.26" rot="R180"/>
+<instance part="I2CDISP" gate="-1" x="93.98" y="86.36" rot="R270"/>
+<instance part="I2CDISP" gate="-2" x="91.44" y="86.36" rot="R270"/>
+<instance part="I2CDISP" gate="-3" x="88.9" y="86.36" rot="R270"/>
+<instance part="I2CDISP" gate="-4" x="86.36" y="86.36" rot="R270"/>
 <instance part="GND2" gate="1" x="96.52" y="66.04"/>
 <instance part="UART" gate="-1" x="35.56" y="88.9" rot="R270"/>
 <instance part="UART" gate="-2" x="33.02" y="88.9" rot="R270"/>
@@ -3996,9 +4000,23 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="P+1" gate="1" x="-25.4" y="60.96"/>
 <instance part="P+2" gate="1" x="17.78" y="101.6"/>
 <instance part="P+3" gate="1" x="2.54" y="38.1" rot="R90"/>
-<instance part="P+4" gate="1" x="93.98" y="71.12" rot="R270"/>
-<instance part="GND4" gate="1" x="96.52" y="43.18"/>
+<instance part="P+4" gate="1" x="83.82" y="66.04" rot="R90"/>
+<instance part="GND4" gate="1" x="109.22" y="30.48"/>
 <instance part="GND5" gate="1" x="0" y="50.8"/>
+<instance part="I2CKEYB" gate="-1" x="111.76" y="86.36" rot="R270"/>
+<instance part="I2CKEYB" gate="-2" x="109.22" y="86.36" rot="R270"/>
+<instance part="I2CKEYB" gate="-3" x="106.68" y="86.36" rot="R270"/>
+<instance part="I2CKEYB" gate="-4" x="104.14" y="86.36" rot="R270"/>
+<instance part="I2CHOUR" gate="-1" x="127" y="86.36" rot="R270"/>
+<instance part="I2CHOUR" gate="-2" x="124.46" y="86.36" rot="R270"/>
+<instance part="I2CHOUR" gate="-3" x="121.92" y="86.36" rot="R270"/>
+<instance part="I2CHOUR" gate="-4" x="119.38" y="86.36" rot="R270"/>
+<instance part="COMMUNIT" gate="-1" x="86.36" y="55.88" rot="R180"/>
+<instance part="COMMUNIT" gate="-2" x="86.36" y="53.34" rot="R180"/>
+<instance part="LEDDISP" gate="-1" x="142.24" y="86.36" rot="R270"/>
+<instance part="LEDDISP" gate="-2" x="139.7" y="86.36" rot="R270"/>
+<instance part="LEDDISP" gate="-3" x="137.16" y="86.36" rot="R270"/>
+<instance part="LEDDISP" gate="-4" x="134.62" y="86.36" rot="R270"/>
 </instances>
 <busses>
 </busses>
@@ -4007,13 +4025,13 @@ Grid 5.08 mm&lt;p&gt;
 <segment>
 <pinref part="U$1" gate="G$1" pin="D2"/>
 <wire x1="33.02" y1="60.96" x2="20.32" y2="60.96" width="0.1524" layer="91"/>
-<pinref part="TIN" gate="-3" pin="KL"/>
 <wire x1="20.32" y1="60.96" x2="12.7" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="-2.54" y1="88.9" x2="12.7" y2="88.9" width="0.1524" layer="91"/>
-<wire x1="12.7" y1="88.9" x2="12.7" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="12.7" y1="91.44" x2="12.7" y2="60.96" width="0.1524" layer="91"/>
 <pinref part="R1" gate="G$1" pin="1"/>
 <wire x1="20.32" y1="63.5" x2="20.32" y2="60.96" width="0.1524" layer="91"/>
 <junction x="20.32" y="60.96"/>
+<pinref part="TIN" gate="-2" pin="KL"/>
+<wire x1="-2.54" y1="91.44" x2="12.7" y2="91.44" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$2" class="0">
@@ -4045,15 +4063,30 @@ Grid 5.08 mm&lt;p&gt;
 <net name="GND" class="0">
 <segment>
 <pinref part="U$1" gate="G$1" pin="GND"/>
-<wire x1="76.2" y1="68.58" x2="96.52" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="76.2" y1="68.58" x2="93.98" y2="68.58" width="0.1524" layer="91"/>
 <pinref part="GND2" gate="1" pin="GND"/>
 <junction x="96.52" y="68.58"/>
 <pinref part="BUZZER" gate="-2" pin="KL"/>
-<pinref part="I2C" gate="-1" pin="KL"/>
 <wire x1="96.52" y1="68.58" x2="101.6" y2="68.58" width="0.1524" layer="91"/>
 <wire x1="101.6" y1="68.58" x2="101.6" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="81.28" x2="96.52" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="101.6" y1="60.96" x2="109.22" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="68.58" x2="96.52" y2="68.58" width="0.1524" layer="91"/>
 <junction x="96.52" y="68.58"/>
+<pinref part="I2CKEYB" gate="-1" pin="KL"/>
+<wire x1="101.6" y1="68.58" x2="111.76" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="111.76" y1="68.58" x2="111.76" y2="81.28" width="0.1524" layer="91"/>
+<junction x="101.6" y="68.58"/>
+<pinref part="I2CDISP" gate="-1" pin="KL"/>
+<wire x1="93.98" y1="81.28" x2="93.98" y2="68.58" width="0.1524" layer="91"/>
+<junction x="93.98" y="68.58"/>
+<pinref part="I2CHOUR" gate="-1" pin="KL"/>
+<wire x1="111.76" y1="68.58" x2="127" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="127" y1="68.58" x2="127" y2="81.28" width="0.1524" layer="91"/>
+<junction x="111.76" y="68.58"/>
+<pinref part="LEDDISP" gate="-1" pin="KL"/>
+<wire x1="127" y1="68.58" x2="142.24" y2="68.58" width="0.1524" layer="91"/>
+<wire x1="142.24" y1="68.58" x2="142.24" y2="81.28" width="0.1524" layer="91"/>
+<junction x="127" y="68.58"/>
 </segment>
 <segment>
 <pinref part="UART" gate="-1" pin="KL"/>
@@ -4066,20 +4099,21 @@ Grid 5.08 mm&lt;p&gt;
 <segment>
 <pinref part="Q1" gate="G$1" pin="E"/>
 <pinref part="GND4" gate="1" pin="GND"/>
+<wire x1="109.22" y1="35.56" x2="109.22" y2="33.02" width="0.1524" layer="91"/>
 </segment>
 <segment>
-<pinref part="TIN" gate="-2" pin="KL"/>
-<wire x1="-2.54" y1="91.44" x2="0" y2="91.44" width="0.1524" layer="91"/>
-<wire x1="0" y1="91.44" x2="0" y2="73.66" width="0.1524" layer="91"/>
 <wire x1="0" y1="73.66" x2="0" y2="58.42" width="0.1524" layer="91"/>
 <pinref part="TOUT" gate="-3" pin="KL"/>
 <wire x1="0" y1="58.42" x2="0" y2="53.34" width="0.1524" layer="91"/>
 <wire x1="-2.54" y1="73.66" x2="0" y2="73.66" width="0.1524" layer="91"/>
-<junction x="0" y="73.66"/>
 <pinref part="GND5" gate="1" pin="GND"/>
 <pinref part="TUT" gate="-3" pin="KL"/>
 <wire x1="-2.54" y1="58.42" x2="0" y2="58.42" width="0.1524" layer="91"/>
 <junction x="0" y="58.42"/>
+<wire x1="0" y1="73.66" x2="0" y2="88.9" width="0.1524" layer="91"/>
+<junction x="0" y="73.66"/>
+<pinref part="TIN" gate="-3" pin="KL"/>
+<wire x1="0" y1="88.9" x2="-2.54" y2="88.9" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$5" class="0">
@@ -4120,7 +4154,19 @@ Grid 5.08 mm&lt;p&gt;
 <wire x1="53.34" y1="60.96" x2="50.8" y2="60.96" width="0.1524" layer="91"/>
 <wire x1="50.8" y1="60.96" x2="50.8" y2="73.66" width="0.1524" layer="91"/>
 <wire x1="50.8" y1="73.66" x2="88.9" y2="73.66" width="0.1524" layer="91"/>
-<pinref part="I2C" gate="-3" pin="KL"/>
+<pinref part="I2CDISP" gate="-3" pin="KL"/>
+<pinref part="I2CKEYB" gate="-3" pin="KL"/>
+<wire x1="88.9" y1="73.66" x2="106.68" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="106.68" y1="73.66" x2="106.68" y2="81.28" width="0.1524" layer="91"/>
+<junction x="88.9" y="73.66"/>
+<pinref part="I2CHOUR" gate="-3" pin="KL"/>
+<wire x1="106.68" y1="73.66" x2="121.92" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="121.92" y1="73.66" x2="121.92" y2="81.28" width="0.1524" layer="91"/>
+<junction x="106.68" y="73.66"/>
+<pinref part="LEDDISP" gate="-3" pin="KL"/>
+<wire x1="121.92" y1="73.66" x2="137.16" y2="73.66" width="0.1524" layer="91"/>
+<wire x1="137.16" y1="73.66" x2="137.16" y2="81.28" width="0.1524" layer="91"/>
+<junction x="121.92" y="73.66"/>
 </segment>
 </net>
 <net name="N$11" class="0">
@@ -4129,7 +4175,19 @@ Grid 5.08 mm&lt;p&gt;
 <wire x1="53.34" y1="63.5" x2="53.34" y2="76.2" width="0.1524" layer="91"/>
 <wire x1="53.34" y1="76.2" x2="86.36" y2="76.2" width="0.1524" layer="91"/>
 <wire x1="86.36" y1="76.2" x2="86.36" y2="81.28" width="0.1524" layer="91"/>
-<pinref part="I2C" gate="-4" pin="KL"/>
+<pinref part="I2CDISP" gate="-4" pin="KL"/>
+<pinref part="I2CKEYB" gate="-4" pin="KL"/>
+<wire x1="86.36" y1="76.2" x2="104.14" y2="76.2" width="0.1524" layer="91"/>
+<wire x1="104.14" y1="76.2" x2="104.14" y2="81.28" width="0.1524" layer="91"/>
+<junction x="86.36" y="76.2"/>
+<pinref part="I2CHOUR" gate="-4" pin="KL"/>
+<wire x1="104.14" y1="76.2" x2="119.38" y2="76.2" width="0.1524" layer="91"/>
+<wire x1="119.38" y1="76.2" x2="119.38" y2="81.28" width="0.1524" layer="91"/>
+<junction x="104.14" y="76.2"/>
+<pinref part="LEDDISP" gate="-4" pin="KL"/>
+<wire x1="119.38" y1="76.2" x2="134.62" y2="76.2" width="0.1524" layer="91"/>
+<wire x1="134.62" y1="76.2" x2="134.62" y2="81.28" width="0.1524" layer="91"/>
+<junction x="119.38" y="76.2"/>
 </segment>
 </net>
 <net name="N$4" class="0">
@@ -4160,20 +4218,22 @@ Grid 5.08 mm&lt;p&gt;
 <segment>
 <pinref part="BUZZER" gate="-1" pin="KL"/>
 <pinref part="Q1" gate="G$1" pin="C"/>
-<wire x1="101.6" y1="58.42" x2="96.52" y2="58.42" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="58.42" x2="96.52" y2="55.88" width="0.1524" layer="91"/>
+<wire x1="109.22" y1="58.42" x2="109.22" y2="45.72" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$7" class="0">
 <segment>
 <pinref part="Q1" gate="G$1" pin="B"/>
 <pinref part="R6" gate="G$1" pin="1"/>
+<wire x1="104.14" y1="40.64" x2="104.14" y2="48.26" width="0.1524" layer="91"/>
+<wire x1="104.14" y1="48.26" x2="91.44" y2="48.26" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="N$16" class="0">
 <segment>
 <pinref part="R6" gate="G$1" pin="2"/>
 <pinref part="U$1" gate="G$1" pin="D13"/>
+<wire x1="81.28" y1="48.26" x2="81.28" y2="50.8" width="0.1524" layer="91"/>
 <wire x1="81.28" y1="50.8" x2="76.2" y2="50.8" width="0.1524" layer="91"/>
 </segment>
 </net>
@@ -4216,12 +4276,39 @@ Grid 5.08 mm&lt;p&gt;
 <junction x="17.78" y="93.98"/>
 </segment>
 <segment>
-<pinref part="I2C" gate="-2" pin="KL"/>
-<wire x1="91.44" y1="81.28" x2="91.44" y2="71.12" width="0.1524" layer="91"/>
 <pinref part="U$1" gate="G$1" pin="RAW"/>
+<pinref part="I2CKEYB" gate="-2" pin="KL"/>
+<wire x1="109.22" y1="71.12" x2="109.22" y2="81.28" width="0.1524" layer="91"/>
 <wire x1="76.2" y1="71.12" x2="91.44" y2="71.12" width="0.1524" layer="91"/>
 <pinref part="P+4" gate="1" pin="+5V"/>
+<wire x1="91.44" y1="71.12" x2="109.22" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="86.36" y1="66.04" x2="91.44" y2="66.04" width="0.1524" layer="91"/>
+<wire x1="91.44" y1="66.04" x2="91.44" y2="71.12" width="0.1524" layer="91"/>
 <junction x="91.44" y="71.12"/>
+<pinref part="I2CDISP" gate="-2" pin="KL"/>
+<wire x1="91.44" y1="81.28" x2="91.44" y2="71.12" width="0.1524" layer="91"/>
+<pinref part="I2CHOUR" gate="-2" pin="KL"/>
+<wire x1="109.22" y1="71.12" x2="124.46" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="124.46" y1="71.12" x2="124.46" y2="81.28" width="0.1524" layer="91"/>
+<junction x="109.22" y="71.12"/>
+<pinref part="LEDDISP" gate="-2" pin="KL"/>
+<wire x1="124.46" y1="71.12" x2="139.7" y2="71.12" width="0.1524" layer="91"/>
+<wire x1="139.7" y1="71.12" x2="139.7" y2="81.28" width="0.1524" layer="91"/>
+<junction x="124.46" y="71.12"/>
+</segment>
+</net>
+<net name="N$8" class="0">
+<segment>
+<pinref part="COMMUNIT" gate="-1" pin="KL"/>
+<pinref part="U$1" gate="G$1" pin="A1"/>
+<wire x1="81.28" y1="55.88" x2="76.2" y2="55.88" width="0.1524" layer="91"/>
+</segment>
+</net>
+<net name="N$17" class="0">
+<segment>
+<pinref part="COMMUNIT" gate="-2" pin="KL"/>
+<pinref part="U$1" gate="G$1" pin="A0"/>
+<wire x1="81.28" y1="53.34" x2="76.2" y2="53.34" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
