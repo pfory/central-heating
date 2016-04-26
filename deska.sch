@@ -3957,6 +3957,9 @@ Grid 5.08 mm&lt;p&gt;
 <part name="I2CHOUR" library="con-wago-508" deviceset="W237-04P" device=""/>
 <part name="COMMUNIT" library="con-wago-508" deviceset="W237-02P" device=""/>
 <part name="LEDDISP" library="con-wago-508" deviceset="W237-04P" device=""/>
+<part name="NAPAJENI" library="con-wago-508" deviceset="W237-02P" device=""/>
+<part name="P+5" library="supply1" deviceset="+5V" device=""/>
+<part name="GND6" library="supply1" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -4017,6 +4020,10 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="LEDDISP" gate="-2" x="139.7" y="86.36" rot="R270"/>
 <instance part="LEDDISP" gate="-3" x="137.16" y="86.36" rot="R270"/>
 <instance part="LEDDISP" gate="-4" x="134.62" y="86.36" rot="R270"/>
+<instance part="NAPAJENI" gate="-1" x="48.26" y="30.48"/>
+<instance part="NAPAJENI" gate="-2" x="48.26" y="25.4"/>
+<instance part="P+5" gate="1" x="53.34" y="33.02"/>
+<instance part="GND6" gate="1" x="53.34" y="22.86"/>
 </instances>
 <busses>
 </busses>
@@ -4114,6 +4121,10 @@ Grid 5.08 mm&lt;p&gt;
 <junction x="0" y="73.66"/>
 <pinref part="TIN" gate="-3" pin="KL"/>
 <wire x1="0" y1="88.9" x2="-2.54" y2="88.9" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="NAPAJENI" gate="-2" pin="KL"/>
+<pinref part="GND6" gate="1" pin="GND"/>
 </segment>
 </net>
 <net name="N$5" class="0">
@@ -4295,6 +4306,10 @@ Grid 5.08 mm&lt;p&gt;
 <wire x1="124.46" y1="71.12" x2="139.7" y2="71.12" width="0.1524" layer="91"/>
 <wire x1="139.7" y1="71.12" x2="139.7" y2="81.28" width="0.1524" layer="91"/>
 <junction x="124.46" y="71.12"/>
+</segment>
+<segment>
+<pinref part="NAPAJENI" gate="-1" pin="KL"/>
+<pinref part="P+5" gate="1" pin="+5V"/>
 </segment>
 </net>
 <net name="N$8" class="0">
