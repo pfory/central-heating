@@ -21,7 +21,7 @@ gpio.write(pinLed,gpio.HIGH)
 heartBeat = node.bootreason()+10
 print("Boot reason:"..heartBeat)
 
-versionSW                  = "0.42"
+versionSW                  = "0.5"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
