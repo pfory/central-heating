@@ -3955,11 +3955,13 @@ Grid 5.08 mm&lt;p&gt;
 <part name="GND5" library="supply1" deviceset="GND" device=""/>
 <part name="I2CKEYB" library="con-wago-508" deviceset="W237-04P" device=""/>
 <part name="I2CHOUR" library="con-wago-508" deviceset="W237-04P" device=""/>
-<part name="COMMUNIT" library="con-wago-508" deviceset="W237-02P" device=""/>
 <part name="LEDDISP" library="con-wago-508" deviceset="W237-04P" device=""/>
 <part name="NAPAJENI" library="con-wago-508" deviceset="W237-02P" device=""/>
 <part name="P+5" library="supply1" deviceset="+5V" device=""/>
 <part name="GND6" library="supply1" deviceset="GND" device=""/>
+<part name="P+6" library="supply1" deviceset="+5V" device=""/>
+<part name="GND7" library="supply1" deviceset="GND" device=""/>
+<part name="COMMUNIT1" library="con-wago-508" deviceset="W237-04P" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -3990,7 +3992,7 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="Q1" gate="G$1" x="106.68" y="40.64"/>
 <instance part="Q2" gate="G$1" x="-22.86" y="43.18" rot="MR0"/>
 <instance part="R5" gate="G$1" x="20.32" y="50.8" rot="R180"/>
-<instance part="R6" gate="G$1" x="86.36" y="48.26" rot="R180"/>
+<instance part="R6" gate="G$1" x="99.06" y="50.8" rot="R180"/>
 <instance part="I2CDISP" gate="-1" x="93.98" y="86.36" rot="R270"/>
 <instance part="I2CDISP" gate="-2" x="91.44" y="86.36" rot="R270"/>
 <instance part="I2CDISP" gate="-3" x="88.9" y="86.36" rot="R270"/>
@@ -4014,8 +4016,6 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="I2CHOUR" gate="-2" x="124.46" y="86.36" rot="R270"/>
 <instance part="I2CHOUR" gate="-3" x="121.92" y="86.36" rot="R270"/>
 <instance part="I2CHOUR" gate="-4" x="119.38" y="86.36" rot="R270"/>
-<instance part="COMMUNIT" gate="-1" x="86.36" y="55.88" rot="R180"/>
-<instance part="COMMUNIT" gate="-2" x="86.36" y="53.34" rot="R180"/>
 <instance part="LEDDISP" gate="-1" x="142.24" y="86.36" rot="R270"/>
 <instance part="LEDDISP" gate="-2" x="139.7" y="86.36" rot="R270"/>
 <instance part="LEDDISP" gate="-3" x="137.16" y="86.36" rot="R270"/>
@@ -4024,6 +4024,12 @@ Grid 5.08 mm&lt;p&gt;
 <instance part="NAPAJENI" gate="-2" x="48.26" y="25.4"/>
 <instance part="P+5" gate="1" x="53.34" y="33.02"/>
 <instance part="GND6" gate="1" x="53.34" y="22.86"/>
+<instance part="P+6" gate="1" x="78.74" y="48.26" rot="R90"/>
+<instance part="GND7" gate="1" x="81.28" y="43.18"/>
+<instance part="COMMUNIT1" gate="-1" x="86.36" y="55.88" rot="R180"/>
+<instance part="COMMUNIT1" gate="-2" x="86.36" y="53.34" rot="R180"/>
+<instance part="COMMUNIT1" gate="-3" x="86.36" y="48.26" rot="R180"/>
+<instance part="COMMUNIT1" gate="-4" x="86.36" y="45.72" rot="R180"/>
 </instances>
 <busses>
 </busses>
@@ -4125,6 +4131,10 @@ Grid 5.08 mm&lt;p&gt;
 <segment>
 <pinref part="NAPAJENI" gate="-2" pin="KL"/>
 <pinref part="GND6" gate="1" pin="GND"/>
+</segment>
+<segment>
+<pinref part="GND7" gate="1" pin="GND"/>
+<pinref part="COMMUNIT1" gate="-4" pin="KL"/>
 </segment>
 </net>
 <net name="N$5" class="0">
@@ -4232,20 +4242,11 @@ Grid 5.08 mm&lt;p&gt;
 <wire x1="109.22" y1="58.42" x2="109.22" y2="45.72" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$7" class="0">
-<segment>
-<pinref part="Q1" gate="G$1" pin="B"/>
-<pinref part="R6" gate="G$1" pin="1"/>
-<wire x1="104.14" y1="40.64" x2="104.14" y2="48.26" width="0.1524" layer="91"/>
-<wire x1="104.14" y1="48.26" x2="91.44" y2="48.26" width="0.1524" layer="91"/>
-</segment>
-</net>
 <net name="N$16" class="0">
 <segment>
 <pinref part="R6" gate="G$1" pin="2"/>
 <pinref part="U$1" gate="G$1" pin="D13"/>
-<wire x1="81.28" y1="48.26" x2="81.28" y2="50.8" width="0.1524" layer="91"/>
-<wire x1="81.28" y1="50.8" x2="76.2" y2="50.8" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="50.8" x2="76.2" y2="50.8" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="+5V" class="0">
@@ -4311,19 +4312,30 @@ Grid 5.08 mm&lt;p&gt;
 <pinref part="NAPAJENI" gate="-1" pin="KL"/>
 <pinref part="P+5" gate="1" pin="+5V"/>
 </segment>
+<segment>
+<pinref part="P+6" gate="1" pin="+5V"/>
+<pinref part="COMMUNIT1" gate="-3" pin="KL"/>
+</segment>
 </net>
 <net name="N$8" class="0">
 <segment>
-<pinref part="COMMUNIT" gate="-1" pin="KL"/>
 <pinref part="U$1" gate="G$1" pin="A1"/>
 <wire x1="81.28" y1="55.88" x2="76.2" y2="55.88" width="0.1524" layer="91"/>
+<pinref part="COMMUNIT1" gate="-1" pin="KL"/>
 </segment>
 </net>
 <net name="N$17" class="0">
 <segment>
-<pinref part="COMMUNIT" gate="-2" pin="KL"/>
 <pinref part="U$1" gate="G$1" pin="A0"/>
 <wire x1="81.28" y1="53.34" x2="76.2" y2="53.34" width="0.1524" layer="91"/>
+<pinref part="COMMUNIT1" gate="-2" pin="KL"/>
+</segment>
+</net>
+<net name="N$7" class="0">
+<segment>
+<pinref part="R6" gate="G$1" pin="1"/>
+<pinref part="Q1" gate="G$1" pin="B"/>
+<wire x1="104.14" y1="50.8" x2="104.14" y2="40.64" width="0.1524" layer="91"/>
 </segment>
 </net>
 </nets>
