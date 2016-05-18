@@ -21,7 +21,7 @@ gpio.write(pinLed,gpio.HIGH)
 heartBeat = node.bootreason()+10
 print("Boot reason:"..heartBeat)
 
-versionSW                  = "0.5"
+versionSW                  = "0.51"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -185,7 +185,7 @@ end
 
 
 function mqtt_sub()  
-  m:subscribe(base,0, function(conn)   
+  m:subscribe(base.."com",0, function(conn)   
     print("Mqtt Subscribed to OpenHAB feed for device "..deviceID)  
   end)  
 end
@@ -193,14 +193,21 @@ end
  -- on publish message receive event  
 m:on("message", function(conn, topic, data)   
   print("Received:" .. topic .. ":" .. data) 
+  if topic == base.."com" then
+    if data == "ON" then
+      print("Restarting ESP, bye.")
+      node.restart()
+    end
+  end
 end)  
 
 tmr.alarm(0, 5000, 1, function() 
   parseData()
 end)
 
+uart.write(0,"Connecting to Wifi")
 tmr.alarm(0, 1000, 1, function() 
-  print ("Connecting to Wifi... ")
+  uart.write(0,".")
   if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
     print ("Wifi connected")
     tmr.stop(0) 
