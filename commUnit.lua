@@ -5,14 +5,15 @@ deviceID = "ESP8266 CentralHeating "..node.chipid()
 heartBeat = node.bootreason()+10
 print("Boot reason:"..heartBeat)
 
-wifi.setmode(wifi.STATION)
-wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")
-cfg={
-  ip = "192.168.1.153",
-  netmask = "255.255.255.0",
-  gateway = "192.168.1.1"
-}
-wifi.sta.autoconnect(1)
+-- wifi.setmode(wifi.STATION)
+-- wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")
+-- cfg={
+  -- ip = "192.168.1.153",
+  -- netmask = "255.255.255.0",
+  -- gateway = "192.168.1.1"
+-- }
+-- wifi.sta.setip(cfg)
+-- wifi.sta.autoconnect(1)
 
 Broker="88.146.202.186"  
 sendDelay = 60000 --ms
@@ -25,7 +26,7 @@ gpio.write(pinLed,gpio.LOW)
 tmr.delay(1000000)
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSW                  = "0.6"
+versionSW                  = "0.71"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -73,7 +74,7 @@ function sendData()
   objProp = {}
   prikaz = ""
   received=trim(received)
-  --received = "#0;54.06#1;44.38#2;27.38#3;11.06#4;40.00#5;52.88#6;11.31#7;72.25#8;11.06#9;48.25#I;57.19#O;70.50#R;1$*"
+  received="#0;17.50#1;17.38#2;18.31#3;17.25#4;16.38#5;16.38#6;17.56#7;17.31#8;17.25#9;17.25#I;16.56#O;16.88#R;0$*"
   if trim(received)~="" then 
     print(received)
     if string.find(received,"*")~=nil then 
@@ -168,7 +169,7 @@ function sendData()
   print(t10)
   print(t11)
   print(t12)
-  print("I am sending data from Solar unit to OpenHab")
+  print("I am sending data from Central heating unit to OpenHab")
   received=""
 
   m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
@@ -210,6 +211,7 @@ end)
 function sendHB()
   print("I am sending HB to OpenHab")
   m:publish(base.."HeartBeat",   heartBeat,0,0)
+  m:publish(base.."VersionSWCentral",       versionSW,0,0)  
  
   if heartBeat==0 then heartBeat=1
   else heartBeat=0
@@ -221,21 +223,31 @@ tmr.alarm(0, 5000, 1, function()
   parseData()
 end)
 
-uart.write(0,"Connecting to Wifi")
-tmr.alarm(0, 1000, 1, function() 
-  uart.write(0,".")
-  if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
-    print ("Wifi connected")
-    tmr.stop(0) 
-    m:connect(Broker, 31883, 0, 1, function(conn) 
-      mqtt_sub() --run the subscription function 
-      print(wifi.sta.getip())
-      print("Mqtt Connected to:" .. Broker.." - "..base) 
-      m:publish(base.."VersionSWCentral",       versionSW,0,0)  
-      sendHB() 
-      tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
-        sendData() 
-      end)
-    end) 
-  end
+m:connect(Broker, 31883, 0, 1, function(conn) 
+  mqtt_sub() --run the subscription function 
+  print(wifi.sta.getip())
+  print("Mqtt Connected to:" .. Broker.." - "..base) 
+  sendHB() 
+  tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
+    sendData() 
+  end)
 end)
+
+-- uart.write(0,"Connecting to Wifi")
+-- tmr.alarm(0, 1000, 1, function() 
+  -- uart.write(0,".")
+  -- if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
+    -- print ("Wifi connected")
+    -- tmr.stop(0) 
+    -- m:connect(Broker, 31883, 0, 1, function(conn) 
+      -- mqtt_sub() --run the subscription function 
+      -- print(wifi.sta.getip())
+      -- print("Mqtt Connected to:" .. Broker.." - "..base) 
+      -- m:publish(base.."VersionSWCentral",       versionSW,0,0)  
+      -- sendHB() 
+      -- tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
+        -- sendData() 
+      -- end)
+    -- end) 
+  -- end
+-- end)

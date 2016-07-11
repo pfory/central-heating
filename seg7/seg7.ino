@@ -5,17 +5,13 @@ SevSeg sevseg; //Instantiate a seven segment controller object
 byte counter=0;
 long lastMillis=0;
 
-byte temperature;
+float temperature;
 
 void setup() {
   Serial.begin(9600);
-  Wire.begin(8);   
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
-  Wire.onReceive(receiveEvent); // register event
-  byte numDigits = 2;   
-  byte digitPins[] = {9,10}; //Digits: 1,2,3,4 <--put one resistor (ex: 220 Ohms, or 330 Ohms, etc, on each digit pin)
-  byte segmentPins[] = {2, 3, 4, 5, 6, 7, 8, 0}; //Segments: A,B,C,D,E,F,G,Period
+  byte numDigits = 4;   
+  byte digitPins[] = {10,11,12,13}; //Digits: 1,2,3,4 <--put one resistor (ex: 220 Ohms, or 330 Ohms, etc, on each digit pin)
+  byte segmentPins[] = {2, 3, 4, 5, 6, 7, 8, 9}; //Segments: A,B,C,D,E,F,G,Period
 
   sevseg.begin(COMMON_ANODE, numDigits, digitPins, segmentPins);
   sevseg.setBrightness(100); //Note: 100 brightness simply corresponds to a delay of 2000us after lighting each segment. A brightness of 0 
@@ -32,9 +28,10 @@ void setup() {
 }
 
 void loop() {
-  if (millis()-lastMillis>=1000) {
+  if (millis()-lastMillis>=100) {
     lastMillis=millis();
-    sevseg.setNumber(temperature, 0);
+    sevseg.setNumber(temperature, 1);
+    temperature+=0.1f;
     //Serial.println(temperature);
     
     /*Wire.requestFrom(8, 6);    // request 6 bytes from slave device #8

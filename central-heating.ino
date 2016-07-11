@@ -219,6 +219,9 @@ const byte STATUS_AFTER_BOOT  = 9;
 /////////////////////////////////////////////   S  E  T  U  P   ////////////////////////////////////
 void setup(void)
 {
+#ifdef keypad
+  Wire.begin();
+#endif
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
