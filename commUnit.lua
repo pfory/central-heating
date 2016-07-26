@@ -5,17 +5,8 @@ deviceID = "ESP8266 CentralHeating "..node.chipid()
 heartBeat = node.bootreason()+10
 print("Boot reason:"..heartBeat)
 
--- wifi.setmode(wifi.STATION)
--- wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")
--- cfg={
-  -- ip = "192.168.1.153",
-  -- netmask = "255.255.255.0",
-  -- gateway = "192.168.1.1"
--- }
--- wifi.sta.setip(cfg)
--- wifi.sta.autoconnect(1)
-
-Broker="88.146.202.186"  
+--Broker="88.146.202.186"  
+Broker="192.168.1.56"  
 sendDelay = 60000 --ms
 
 received = ""
@@ -26,7 +17,7 @@ gpio.write(pinLed,gpio.LOW)
 tmr.delay(1000000)
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSW                  = "0.71"
+versionSW                  = "0.72"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -36,7 +27,7 @@ function reconnect()
   if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
     print ("Wifi Up!")
     tmr.stop(1) 
-    m:connect(Broker, 31883, 0, 1, function(conn) 
+    m:connect(Broker, 1883, 0, 1, function(conn) 
       print(wifi.sta.getip())
       print("Mqtt Connected to:" .. Broker) 
       mqtt_sub() --run the subscription function 
@@ -71,6 +62,7 @@ function sendData()
   if heartBeat==0 then heartBeat=1
   else heartBeat=0
   end
+  emptyData=false
   objProp = {}
   prikaz = ""
   received=trim(received)
@@ -137,6 +129,7 @@ function sendData()
       end
     end
   else 
+    emptyData=true
     print("empty data")
     tINKamna=0
     tOUTKamna=0
@@ -171,23 +164,26 @@ function sendData()
   print(t12)
   print("I am sending data from Central heating unit to OpenHab")
   received=""
-
-  m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
-  m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
-  m:publish(base.."sPumpKamna",             sPumpKamna,0,0)  
-  m:publish(base.."t1",                     string.format("%.1f",t1),0,0)  
-  m:publish(base.."t2",                     string.format("%.1f",t2),0,0)  
-  m:publish(base.."t3",                     string.format("%.1f",t3),0,0)  
-  m:publish(base.."t4",                     string.format("%.1f",t4),0,0)  
-  m:publish(base.."t5",                     string.format("%.1f",t5),0,0)  
-  m:publish(base.."t6",                     string.format("%.1f",t6),0,0)  
-  m:publish(base.."t7",                     string.format("%.1f",t7),0,0)  
-  m:publish(base.."t8",                     string.format("%.1f",t8),0,0)  
-  m:publish(base.."t9",                     string.format("%.1f",t9),0,0)  
-  m:publish(base.."t10",                    string.format("%.1f",t10),0,0)  
-  --m:publish(base.."t11",                    string.format("%.1f",t11),0,0)  
-  --m:publish(base.."t12",                    string.format("%.1f",t12),0,0)  
-  gpio.write(pinLed,gpio.HIGH)  
+  
+  if (emptyData) then 
+  else
+    m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
+    m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
+    m:publish(base.."sPumpKamna",             sPumpKamna,0,0)  
+    m:publish(base.."t1",                     string.format("%.1f",t1),0,0)  
+    m:publish(base.."t2",                     string.format("%.1f",t2),0,0)  
+    m:publish(base.."t3",                     string.format("%.1f",t3),0,0)  
+    m:publish(base.."t4",                     string.format("%.1f",t4),0,0)  
+    m:publish(base.."t5",                     string.format("%.1f",t5),0,0)  
+    m:publish(base.."t6",                     string.format("%.1f",t6),0,0)  
+    m:publish(base.."t7",                     string.format("%.1f",t7),0,0)  
+    m:publish(base.."t8",                     string.format("%.1f",t8),0,0)  
+    m:publish(base.."t9",                     string.format("%.1f",t9),0,0)  
+    m:publish(base.."t10",                    string.format("%.1f",t10),0,0)  
+    --m:publish(base.."t11",                    string.format("%.1f",t11),0,0)  
+    --m:publish(base.."t12",                    string.format("%.1f",t12),0,0)  
+    gpio.write(pinLed,gpio.HIGH)  
+  end
 end
 
 
@@ -223,7 +219,7 @@ tmr.alarm(0, 5000, 1, function()
   parseData()
 end)
 
-m:connect(Broker, 31883, 0, 1, function(conn) 
+m:connect(Broker, 1883, 0, 1, function(conn) 
   mqtt_sub() --run the subscription function 
   print(wifi.sta.getip())
   print("Mqtt Connected to:" .. Broker.." - "..base) 
