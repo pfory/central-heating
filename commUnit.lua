@@ -59,6 +59,7 @@ end
 function sendData()
   gpio.write(pinLed,gpio.LOW)
   m:publish(base.."HeartBeat",              heartBeat,0,0)  
+  m:publish(base.."VersionSWCentral",       versionSW,0,0)  
   if heartBeat==0 then heartBeat=1
   else heartBeat=0
   end
@@ -166,10 +167,11 @@ function sendData()
   received=""
   
   if (emptyData) then 
+    m:publish(base.."t1",                     string.format("%.1f",-100),0,0)  
   else
     m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
     m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
-    m:publish(base.."sPumpKamna",             sPumpKamna,0,0)  
+    m:publish(base.."sPumpKamna/status",      sPumpKamna,0,0)  
     m:publish(base.."t1",                     string.format("%.1f",t1),0,0)  
     m:publish(base.."t2",                     string.format("%.1f",t2),0,0)  
     m:publish(base.."t3",                     string.format("%.1f",t3),0,0)  
@@ -221,29 +223,12 @@ end)
 
 m:connect(Broker, 1883, 0, 1, function(conn) 
   mqtt_sub() --run the subscription function 
-  print(wifi.sta.getip())
+  --print(wifi.sta.getip())
   print("Mqtt Connected to:" .. Broker.." - "..base) 
   sendHB() 
+      m:publish(base.."sPumpKamna/status",      "ON",0,0)  
+
   tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
     sendData() 
   end)
 end)
-
--- uart.write(0,"Connecting to Wifi")
--- tmr.alarm(0, 1000, 1, function() 
-  -- uart.write(0,".")
-  -- if wifi.sta.status() == 5 and wifi.sta.getip() ~= nil then 
-    -- print ("Wifi connected")
-    -- tmr.stop(0) 
-    -- m:connect(Broker, 31883, 0, 1, function(conn) 
-      -- mqtt_sub() --run the subscription function 
-      -- print(wifi.sta.getip())
-      -- print("Mqtt Connected to:" .. Broker.." - "..base) 
-      -- m:publish(base.."VersionSWCentral",       versionSW,0,0)  
-      -- sendHB() 
-      -- tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
-        -- sendData() 
-      -- end)
-    -- end) 
-  -- end
--- end)

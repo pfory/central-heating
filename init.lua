@@ -1,3 +1,6 @@
+print("Wait 5 seconds please")
+tmr.delay(5000000)
+
 wifi.setmode(wifi.STATION)
 wifi.sta.config("Datlovo","Nu6kMABmseYwbCoJ7LyG")   ---   SSID and Password for your LAN DHCP here
 
@@ -26,7 +29,7 @@ tmr.alarm(0, 1000, 1, function()
     remaining, used, total=file.fsinfo()
     print("\nFile system info:\nTotal : "..total.." Bytes\nUsed : "..used.." Bytes\nRemain: "..remaining.." Bytes")
     print("\nReady")
-    dofile("servernode.lua")    --  calls servernode.lua  
+    --dofile("servernode.lua")    --  calls servernode.lua  
     dofile("commUnit.lua")
   end
 end)
