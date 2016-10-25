@@ -17,7 +17,7 @@ gpio.write(pinLed,gpio.LOW)
 tmr.delay(1000000)
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSW                  = "0.72"
+versionSW                  = "0.73"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -48,7 +48,7 @@ end)
 
 uart.on("data", 0,
   function(data)
-    --print("receive from uart:", data)
+    print("receive from uart:", data)
     received = received..data
 end, 0)
 
@@ -67,7 +67,8 @@ function sendData()
   objProp = {}
   prikaz = ""
   received=trim(received)
-  received="#0;17.50#1;17.38#2;18.31#3;17.25#4;16.38#5;16.38#6;17.56#7;17.31#8;17.25#9;17.25#I;16.56#O;16.88#R;0$*"
+  print(received)
+  --received="#0;17.50#1;17.38#2;18.31#3;17.25#4;16.38#5;16.38#6;17.56#7;17.31#8;17.25#9;17.25#I;16.56#O;16.88#R;0$*"
   if trim(received)~="" then 
     print(received)
     if string.find(received,"*")~=nil then 
@@ -163,12 +164,11 @@ function sendData()
   print(t10)
   print(t11)
   print(t12)
-  print("I am sending data from Central heating unit to OpenHab")
   received=""
   
   if (emptyData) then 
-    m:publish(base.."t1",                     string.format("%.1f",-100),0,0)  
   else
+    print("I am sending data from Central heating unit to OpenHab")
     m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
     m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
     m:publish(base.."sPumpKamna/status",      sPumpKamna,0,0)  
@@ -226,8 +226,6 @@ m:connect(Broker, 1883, 0, 1, function(conn)
   --print(wifi.sta.getip())
   print("Mqtt Connected to:" .. Broker.." - "..base) 
   sendHB() 
-      m:publish(base.."sPumpKamna/status",      "ON",0,0)  
-
   tmr.alarm(0, sendDelay, tmr.ALARM_AUTO, function()
     sendData() 
   end)
