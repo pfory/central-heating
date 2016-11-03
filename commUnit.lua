@@ -7,8 +7,8 @@ print("Boot reason:"..heartBeat)
 
 --Broker="88.146.202.186"  
 Broker="192.168.1.56"  
-sendDelay = 60000 --ms
 
+sendDelay = 60000 --ms
 received = ""
 
 pinLed = 4
@@ -17,7 +17,7 @@ gpio.write(pinLed,gpio.LOW)
 tmr.delay(1000000)
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSW                  = "0.73"
+versionSW                  = "0.8"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -73,7 +73,7 @@ function sendData()
     print(received)
     if string.find(received,"*")~=nil then 
       index = 1
-      for value in string.gmatch(received,"\#%w?\;%d*[\.%d]*") do 
+      for value in string.gmatch(received,"\#%w?\;[-]?%d*[\.%d]*") do 
         objProp [index] = value
         prikaz = string.sub(value, 2, 2)
         if prikaz == "I" then
@@ -209,13 +209,12 @@ end)
 function sendHB()
   print("I am sending HB to OpenHab")
   m:publish(base.."HeartBeat",   heartBeat,0,0)
-  m:publish(base.."VersionSWCentral",       versionSW,0,0)  
+  m:publish(base.."VersionSWCentral", versionSW,0,0)  
  
   if heartBeat==0 then heartBeat=1
   else heartBeat=0
   end
 end
-
 
 tmr.alarm(0, 5000, 1, function() 
   parseData()
