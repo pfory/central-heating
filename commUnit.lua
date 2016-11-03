@@ -73,7 +73,7 @@ function sendData()
     print(received)
     if string.find(received,"*")~=nil then 
       index = 1
-      for value in string.gmatch(received,"\#%w?\;%d*[\.%d]*") do 
+      for value in string.gmatch(received,"\#%w?\;\-?%d*[\.%d]*") do 
         objProp [index] = value
         prikaz = string.sub(value, 2, 2)
         if prikaz == "I" then
