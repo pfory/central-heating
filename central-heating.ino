@@ -25,28 +25,34 @@ keyboard
 
 Pro Mini 328 Layout
 ------------------------------------------
-A0              - RX from CommUnit
-A1              - TX to CommUnit
-A2              - 
-A3              - free
-A4              - I2C display SDA 0x20, I2C Central heating unit 0x02, keypad 0x27
-A5              - I2C display SCL 0x20, I2C Central heating unit 0x02, keypad 0x27
+A0              - 
+A1              - 
+A2              - RX from CommUnit
+A3              - TX to CommUnit
+A4              - I2C display SDA 0x27, I2C Central heating unit 0x02, keypad 0x20, 
+A5              - I2C display SCL 0x27, I2C Central heating unit 0x02, keypad 0x20
 D0              - Rx
 D1              - Tx
 D2              - DALLAS
 D3              - 
 D4              - DALLAS
 D5              - DALLAS
-D6              - 
+D6              - RELAY
 D7              - 
 D8              - LED
-D9              - BUZZER
-D10             - free
-D11             - free
-D12             - free
-D13             - free
+D9              - 
+D10             - 
+D11             - 
+D12             - 
+D13             - BUZZER
 --------------------------------------------------------------------------------------------------------------------------
 */
+
+#define watchdog //enable this only on board with optiboot bootloader
+#ifdef watchdog
+#include <avr/wdt.h>
+#endif
+
 
 #include <Wire.h>
 #include <OneWire.h>
@@ -61,7 +67,7 @@ D13             - free
 #define ONE_WIRE_BUS_UT                     5
 #define RELAYPIN                            6
 #define LEDPIN                              8
-#define BUZZERPIN                           9
+#define BUZZERPIN                           13
 
 Beep beep(BUZZERPIN);
 
@@ -84,7 +90,7 @@ const unsigned long   measDelay           = 10000; //in ms
 unsigned long         lastMeas            = measDelay;
 const unsigned long   measTime            = 750; //in ms
 const unsigned long   sendDelay           = 20000; //in ms
-unsigned long         lastSend            = sendDelay;
+unsigned long         lastSend            = sendDelay * -1;
 float                 tempOUT             = 0.f;
 float                 tempIN              = 0.f;
 float                 tempUT[12];     
@@ -100,19 +106,11 @@ unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze 
 
 #ifdef DS1307
 #include <DS1307RTC.h>
+#include <Time.h>
+#include <TimeLib.h>
 #define time
 #endif
 
-
-/*
-#ifdef DS1302
-#include <DS1302RTC.h>
-// Set pins:  CE, IO,CLK
-DS1302RTC RTC(A0, A1, A2);
-#define time
-//set time => seriovy monitor zadat rrrr,m,d,h,m,s napr. 2016,2,7,23,30,00
-#endif
-*/
 
 #ifdef time
 #include <Time.h>
@@ -148,7 +146,7 @@ struct StoreStruct {
   // The default module 0
   0,
   0, // off
-  60,
+  65,
   5,
   95
 };
@@ -169,8 +167,8 @@ struct StoreStruct {
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
 
 #include <SoftwareSerial.h>
-#define RX A0
-#define TX A1
+#define RX A2
+#define TX A3
 SoftwareSerial mySerial(RX, TX);
 #define serial
 
@@ -189,41 +187,40 @@ const PROGMEM uint32_t crc_table[16] = {
 
 #define keypad
 #ifdef keypad
-int address                               = 0x27;
+int address                               = 0x20;
 uint8_t data;
 int error;
 uint8_t pin                               = 0;
 char key                                  = ' ';
 char keyOld                               = ' ';
-unsigned int repeatAfterMs                = 1000;
-unsigned int repeatCharSec                = 10;
+unsigned int repeatAfterMs                = 300;
+//unsigned int repeatCharSec                = 10;
 unsigned long lastKeyPressed              = 0;
 
 //define the symbols on the buttons of the keypads
 const byte ROWS                           = 4; //four rows
 const byte COLS                           = 4; //four columns
 char hexaKeys[ROWS][COLS]                 = {
-                                            {'*','0','#','D'},
-                                            {'7','8','9','C'},
-                                            {'4','5','6','B'},
-                                            {'1','2','3','A'}
+                                            {'*','7','4','1'},
+                                            {'0','8','5','2'},
+                                            {'#','9','6','3'},
+                                            {'D','C','B','A'}
 };
+byte displayVar=1;
+byte displayVarSub=1;
 #endif
 
 
 
 //SW name & version
-float const   versionSW                   = 0.5;
+float const   versionSW                   = 0.6;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
 
 /////////////////////////////////////////////   S  E  T  U  P   ////////////////////////////////////
-void setup(void)
-{
-#ifdef keypad
+void setup(void) {
   Wire.begin();
-#endif
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
@@ -236,27 +233,9 @@ void setup(void)
   lcd.print(versionSW);
   mySerial.begin(9600);
   
-/*#ifdef DS1302
-  if (RTC.haltRTC()) {
-    Serial.println("Clock stopped!");
-    Serial.println("The DS1302 is stopped.");
-    Serial.println("example to initialize the time and begin running.");
-    Serial.println();
-  } else
-    Serial.println("Clock working.");
-
-  if (RTC.writeEN())
-    Serial.println("Write allowed.");
-  else
-    Serial.println("Write protected.");
-
-  delay ( 2000 );
-#endif
-*/  
-
 #ifdef DS1307
   if (RTC.read(tm)) {
-    Serial.print("Ok, Time = ");
+    Serial.print("RTC OK, Time = ");
     print2digits(tm.Hour);
     Serial.write(':');
     print2digits(tm.Minute);
@@ -282,18 +261,17 @@ void setup(void)
   }
 #endif
 
+#ifdef time
   // Setup time library  
   Serial.print("RTC Sync");
   setSyncProvider(RTC.get);          // the function to get the time from the RTC
-  if(timeStatus() == timeSet)
-    Serial.print(" Ok!");
-  else
-    Serial.print(" FAIL!");
-
-  
-  
-  printDateTime();
-
+  if(timeStatus() == timeSet) {
+    Serial.println(" OK!");
+  } else {
+    Serial.println(" FAIL!");
+  }
+  //printDateTime();
+#endif
   loadConfig();
   Serial.print("Temp ON ");
   Serial.println(storage.tempON);
@@ -375,30 +353,21 @@ void setup(void)
   Serial.print(sendDelay);
   Serial.println(" sec");
   
-  delay(3000);
+  delay(1000);
   lcd.clear();
-  lcd.print(versionSWString);
-  lcd.print(versionSW);
-
-  lcd.setCursor(0,1);
-  lcd.print("Temp ON:");
-  lcd.print(storage.tempON);
-
-  lcd.setCursor(0,2);
-  lcd.print("Temp OFF diff:");
-  lcd.print(storage.tempOFFDiff);
   
-  lcd.setCursor(0,3);
-  lcd.print("Temp alarm:");
-  lcd.print(storage.tempAlarm);
+  displayInfo();
 
-  delay(3000);
+  delay(1000);
   lcd.clear();
 
+#ifdef watchdog
   wdt_enable(WDTO_8S);
+#endif
   
   lastSend=0;
-  lastMeas=0;
+  //lastMeas=-measDelay;
+  Serial.println("Setup end.");
 }
 
 //bool first=true;
@@ -409,10 +378,12 @@ void loop(void) {
     first=false;
   }
 */  
+#ifdef watchdog
   wdt_reset();
-  
-  setTime();
-  
+#endif  
+#ifdef time
+  //setTime();
+#endif  
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
     startMeas();    
@@ -426,22 +397,24 @@ void loop(void) {
     Wire.endTransmission();
 
     if (tempOUT <= storage.tempON - storage.tempOFFDiff) {
-      //Serial.println("Relay OFF");
       relay = HIGH;
 #ifdef time
       storage.lastPumpRun = tm;
 #endif
     }
     if ((tempOUT >= storage.tempON) || (tempIN >= storage.tempON)) {
-      //Serial.println("Relay ON");
       relay = LOW;
     }
 
-    digitalWrite(RELAYPIN,relay);
-    digitalWrite(LEDPIN,!relay);
+    if (relay == LOW) {
+      Serial.println("Relay ON");
+    } else {
+      Serial.println("Relay OFF");
+    }
 
-    displayTemp();
-    
+    digitalWrite(RELAYPIN,!relay);
+    digitalWrite(LEDPIN,relay);
+
     if (millis() - lastSend >= sendDelay) {
       sendDataSerial();
       lastSend = millis();
@@ -458,6 +431,7 @@ void loop(void) {
       beep.noDelay(100,40,9,255);
     } */
   }
+  display();
   
   beep.loop();
   
@@ -465,8 +439,6 @@ void loop(void) {
   keyBoard();
   
 #ifdef time
-  displayTime();
-
   testPumpProtect();
 #endif
 }
@@ -492,6 +464,7 @@ void getTemp() {
   }
   if (sensorsUT.getCheckForConversion()==true) {
     for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+      //Serial.println(sensorsUT.getTempCByIndex(i));
       tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
     }
    
@@ -524,16 +497,16 @@ void getTemp() {
 
 void printTemp() {
   Serial.print("Temp IN: ");
-  Serial.print(tempIN); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+  Serial.print(tempIN); 
   Serial.println();
   Serial.print("Temp OUT: ");
-  Serial.print(tempOUT); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+  Serial.print(tempOUT); 
   Serial.println();
   for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
     Serial.print("Temp UT[");
     Serial.print(i);
     Serial.print("]: ");
-    Serial.print(tempUT[i]); // Why "byIndex"? You can have more than one IC on the same bus. 0 refers to the first IC on the wire
+    Serial.print(tempUT[i]); 
     Serial.println();
   }
 }
@@ -558,15 +531,19 @@ void saveConfig() {
 /*
   01234567890123456789
   --------------------
-0|xxx/xxx     15:30:45
-1|1:xxx/xxx 2:xxx/xxx 
-2|3:xxx/xxx 4:xxx/xxx 
-3|5:xxx/xxx 6:xxx/xxx 
+0|xx/xx       15:30:45
+1|xx/xx  xx/xx  xx/xx
+2|xx/xx  xx/xx  xx/xx
+3|xx/xx  xx/xx  xx/xx
   --------------------
   01234567890123456789
 */
 
 void displayTemp() {
+#ifdef time
+  displayTime();
+#endif
+
   lcd.setCursor(0, 0); //col,row
   lcd.print("       ");
   lcd.setCursor(0, 0); //col,row
@@ -576,7 +553,7 @@ void displayTemp() {
     addSpaces((int)tempIN);
     lcd.print((int)tempIN);
   }
-  lcd.setCursor(3, 0); //col,row
+  lcd.setCursor(2, 0); //col,row
   lcd.print("/");
   //addSpaces((int)tempOUT);
   if (tempOUT==TEMP_ERR) {
@@ -588,39 +565,61 @@ void displayTemp() {
   byte radka=1;
   byte sensor=0;
   byte radiator=1;
-  for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+4) {
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+6) {
     lcd.setCursor(0, radka);
-    lcd.print(radiator++);
-    lcd.print(":        ");
-    lcd.setCursor(2, radka);
+    //lcd.print(radiator++);
+    //lcd.print(":        ");
+    //lcd.setCursor(2, radka);
     if (tempUT[sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
       addSpaces((int)tempUT[sensor]);
       lcd.print((int)tempUT[sensor]);
     }
-    lcd.setCursor(5, radka);
+    lcd.setCursor(2, radka);
     lcd.print("/");
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
+      addSpaces((int)tempUT[sensor]);
       lcd.print((int)tempUT[sensor]);    
     }
-    lcd.setCursor(10, radka);
-    lcd.print(radiator++);
-    lcd.print(":        ");
-    lcd.setCursor(12, radka);
+
+    lcd.setCursor(7, radka);
+    //lcd.print(radiator++);
+    //lcd.print(":        ");
+    //lcd.setCursor(12, radka);
     if (tempUT[sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
       addSpaces((int)tempUT[++sensor]);
       lcd.print((int)tempUT[sensor]);    
     }
-    lcd.setCursor(15, radka++);
+    lcd.setCursor(9, radka++);
     lcd.print("/");
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
+      addSpaces((int)tempUT[++sensor]);
+      lcd.print((int)tempUT[sensor++]);    
+    }
+
+    lcd.setCursor(14, radka);
+    //lcd.print(radiator++);
+    //lcd.print(":        ");
+    //lcd.setCursor(12, radka);
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[++sensor]);
+      lcd.print((int)tempUT[sensor]);    
+    }
+    lcd.setCursor(16, radka++);
+    lcd.print("/");
+    if (tempUT[++sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[++sensor]);
       lcd.print((int)tempUT[sensor++]);    
     }
   }
@@ -662,7 +661,6 @@ void print2digits(int number) {
 
 
 void displayTime() {
-  //Serial.print(RTC.get());
   lcd.setCursor(12, 0); //col,row
   if (RTC.read(tm)) {
     lcd2digits(tm.Hour);
@@ -674,71 +672,11 @@ void displayTime() {
     lcd.write('        ');
   }
 }
-/*
-//time functions
-bool getTime(const char *str) {
-  int Hour, Min, Sec;
 
-  if (sscanf(str, "%d:%d:%d", &Hour, &Min, &Sec) != 3) return false;
-  tm.Hour = Hour;
-  tm.Minute = Min;
-  tm.Second = Sec;
-  return true;
-}
-
-bool getDate(const char *str) {
-  char Month[12];
-  int Day, Year;
-  uint8_t monthIndex;
-
-  if (sscanf(str, "%s %d %d", Month, &Day, &Year) != 3) return false;
-  for (monthIndex = 0; monthIndex < 12; monthIndex++) {
-    if (strcmp(Month, monthName[monthIndex]) == 0) break;
-  }
-  if (monthIndex >= 12) return false;
-  tm.Day = Day;
-  tm.Month = monthIndex + 1;
-  tm.Year = CalendarYrToTm(Year);
-  return true;
-}
-*/
 //zabranuje zatuhnuti cerpadla v lete
 void testPumpProtect() {
   //if (storage.lastPumpRun
 }
-
-void printDateTime() {
-  Serial.print("UNIX Time: ");
-  Serial.print(RTC.get());
-
-  if (! RTC.read(tm)) {
-    Serial.print("  Time = ");
-    print2digits(tm.Hour);
-    Serial.write(':');
-    print2digits(tm.Minute);
-    Serial.write(':');
-    print2digits(tm.Second);
-    Serial.print(", Date (D/M/Y) = ");
-    Serial.print(tm.Day);
-    Serial.write('/');
-    Serial.print(tm.Month);
-    Serial.write('/');
-    Serial.print(tmYearToCalendar(tm.Year));
-    Serial.print(", DoW = ");
-    Serial.print(tm.Wday);
-    Serial.println();
-  } else {
-/*#ifdef DS1302
-    Serial.println("DS1302 read error!  Please check the circuitry.");
-#endif
-*/
-#ifdef DS1307
-    Serial.println("DS1307 read error!  Please check the circuitry.");
-#endif
-    Serial.println();
-  }
-}
-
 
 void setTime() {
   static time_t tLast;
@@ -794,7 +732,7 @@ void sendDataSerial() {
   if (firstMeasComplete==false) return;
 
   Serial.print("DATA:");
-  digitalWrite(LEDPIN,HIGH);
+  //digitalWrite(LEDPIN,HIGH);
   crc = ~0L;
   for (byte i=0;i<sensorsUT.getDeviceCount(); i++) {
     send(START_BLOCK);
@@ -913,8 +851,29 @@ void send(float s) {
 void keyBoard() {
 #ifdef keypad
   //char customKey = customKeypad.getKey();
-  Serial.println(key);
   if (key!=' '){
+    Serial.println(key);
+    if (displayVar == 3) {
+      if (key=='*') {
+        displayVarSub=31;
+        //Serial.println(displayVarSub);
+      } else if (key=='D') {
+        displayVarSub=32;
+        //Serial.println(displayVarSub);
+      }
+      return;
+    }
+
+    if (key=='1') {
+      lcd.clear();
+      displayVar = 1;
+    } else if (key=='2') {
+      lcd.clear();
+      displayVar = 2;
+    } else if (key=='3') {
+      lcd.clear();
+      displayVar = 3;
+    }
     /*
     Keyboard layout
     -----------
@@ -1007,6 +966,8 @@ void keyPressed() {
         Serial.print("=");
         Serial.println((char)key);
         */
+      } else {
+        key = ' ';
       }
       break;
     }
@@ -1021,3 +982,48 @@ byte colTest(byte key, byte b) {
   else return 255;
 }
 #endif
+
+void display() {
+  if (displayVar==1) {
+    displayTemp();
+  } else if (displayVar==2) {
+    displayInfo();
+  } else if (displayVar==3) {
+    setTempON();
+  } else if (displayVar==31) {
+    setTempON();
+  } else if (displayVar==32) {
+    setTempON();
+  }
+}
+
+void displayInfo() {
+  lcd.setCursor(0,0);
+  lcd.print(versionSWString);
+  lcd.print(versionSW);
+
+  lcd.setCursor(0,1);
+  lcd.print("Temp ON:");
+  lcd.print(storage.tempON);
+
+  lcd.setCursor(0,2);
+  lcd.print("Temp OFF diff:");
+  lcd.print(storage.tempOFFDiff);
+  
+  lcd.setCursor(0,3);
+  lcd.print("Temp alarm:");
+  lcd.print(storage.tempAlarm);
+}
+
+void setTempON() {
+  lcd.setCursor(0,3);
+  lcd.print("Temp ON:");
+  if (displayVarSub==31) {
+    storage.tempON++;
+  }
+  if (displayVarSub==32) {
+    storage.tempON--;
+  }
+  displayVarSub=0;
+  lcd.print(storage.tempON);
+}
