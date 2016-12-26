@@ -16,17 +16,9 @@ Central heating
 1x klávesnice 4x4
 1x buzzer
 
---HW ESP5266
+--HW ESP8266 - pouze pro odesílání dat
 1x ESP8266
-2x DALLAS 18B20 na vstupu a výstupu z kotle, každý na zvláštním vstupu
-8x DALLAS 18B20 na vstupech a výstupech jednotlivých radiátorù, sbìrnice a jeden pin procesoru
-1x relé 3,3V (ESP)
-1x DC-DC mìniè 3,3V (ESP)
-1x DC-DC mìnic 5V pro displej
-1x displej 20x4
-1x klávesnice 4x4
-1x buzzer 
-
+1x stabilizátor 3,3V
 
 Externí displej Seg7 - v obýváku na zdi
 ---------------------------------------
@@ -59,7 +51,16 @@ tempAlarm+10                    100,40,5-9,255
 Mìøení
 - výstup z výmìníku
 - zpáteèka do výmìníku
-- radiátor 1,2,3,4,5,6
+- radiátor obývák I/O
+- radiátor ložnice stará I/O
+- radiátor ložnice nová I/O
+- radiátor koupelna I/O
+- radiátor dílna I/O
+- radiátor chodba I/O
+- bypass 2xI 1xO
+- bojler I/O
+
+17 èidel
 
 Displej
 12345678901234567890
@@ -87,53 +88,7 @@ I=0.217A
 
 PINOUT
 ------------------------------------------------------------------
-                       --
-                       ||
-                       ||
-                       ||
-                       ||
-                       ||
-                       ||
-                       ||
-                    |--------------------|
-                    | RESET       TXD    |     D1
-                    | ADC         RXD    |     D3
-          VCC       | CH_PD       GPIO4  |     D5 SCL (DISPLAY, KEYBORD)
-       BUZZER   D16 | GPIO16      GPIO5  |     D4 SDA (DISPLAY, KEYBORD)
-        RELAY   D14 | GPIO14      GPIO0  |     D0 STATUS LED
-    DALLAS UT   D12 | GPIO12      GPIO1  |     D2 DALLAS OUT
-    DALLAS IN   D13 | GPIO13      GPIO15 |     D15
-          VCC       | VCC         GND    |     GND
-                    |--------------------|
-
-
-Svorkovnice
-|1|2|3|4|5|6|7|
-
-1 - DALLAS GND
-2 - DALLAS VCC
-3 - teplota OUT
-4 - teplota IN
-5 - teplota sbìrnice radiátory
-6 - relé GND
-7 - relé
-
-
-PINY 6x
-VCC 3.3V
-- VCC ESP
-- CH_PD
-- RELAY
-- DALLAS
-
-GND 6x
-- GND ESP
-- RELAY
-- DALLAS
-
-LED 2x
-BUZZER 2x
-I2C 4x 
+ 
 
 KEYBOARD
 -------
