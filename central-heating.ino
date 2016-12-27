@@ -86,21 +86,23 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
-const unsigned long   measDelay           = 10000; //in ms
-unsigned long         lastMeas            = measDelay;
-const unsigned long   measTime            = 750; //in ms
-const unsigned long   sendDelay           = 20000; //in ms
-unsigned long         lastSend            = sendDelay * -1;
-float                 tempOUT             = 0.f;
-float                 tempIN              = 0.f;
-float                 tempUT[12];     
-bool                  relay               = HIGH;
-const unsigned long   pumpProtect         = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
-const unsigned long   pumpProtectRun      = 300000;     //1000*60*5;     //in ms = 5 min
-bool                  firstMeasComplete   = false;
-#define TEMP_ERR -127
-               
-unsigned int const SERIAL_SPEED           = 9600;  //kvuli BT modulu jinak muze byt vice
+const unsigned long   measDelay                = 10000; //in ms
+unsigned long         lastMeas                 = measDelay * -1;
+const unsigned long   measTime                 = 750; //in ms
+const unsigned long   sendDelay                = 20000; //in ms
+unsigned long         lastSend                 = sendDelay * -1;
+bool                  startConversion          = false;
+unsigned long         startConversionMillis    = 0;
+float                 tempOUT                  = 0.f;
+float                 tempIN                   = 0.f;
+float                 tempUT[12];           
+bool                  relay                    = HIGH;
+const unsigned long   pumpProtect              = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
+const unsigned long   pumpProtectRun           = 300000;     //1000*60*5;     //in ms = 5 min
+bool                  firstMeasComplete        = false;
+#define TEMP_ERR -127     
+                    
+unsigned long const SERIAL_SPEED                = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
 
 #define DS1307
 
@@ -147,7 +149,7 @@ struct StoreStruct {
   0,
   0, // off
   65,
-  5,
+  2,
   95
 };
 
@@ -213,7 +215,7 @@ byte displayVarSub=1;
 
 
 //SW name & version
-float const   versionSW                   = 0.6;
+float const   versionSW                   = 0.61;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -386,8 +388,12 @@ void loop(void) {
 #endif  
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
-    startMeas();    
-    delay(measTime);
+    startMeas(); 
+    startConversion=true;
+    startConversionMillis = millis();
+  }
+  if (startConversion && (millis() - startConversionMillis >= measTime)) {
+    startConversion=false;
     getTemp();
     printTemp();
     //poslani teploty do LED displeje
@@ -414,23 +420,23 @@ void loop(void) {
 
     digitalWrite(RELAYPIN,!relay);
     digitalWrite(LEDPIN,relay);
-
-    if (millis() - lastSend >= sendDelay) {
-      sendDataSerial();
-      lastSend = millis();
-    }
-
-    if (tempOUT >= storage.tempAlarm) {
-      beep.noDelay(100,40,3,255);
-    }
-    /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
-      beep.noDelay(100,40,3,255);
-    } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
-      beep.noDelay(100,40,5,255);
-    } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
-      beep.noDelay(100,40,9,255);
-    } */
   }
+  if (millis() - lastSend >= sendDelay) {
+    sendDataSerial();
+    lastSend = millis();
+  }
+
+  if (tempOUT >= storage.tempAlarm) {
+    beep.noDelay(100,40,3,255);
+  }
+  /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
+    beep.noDelay(100,40,3,255);
+  } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
+    beep.noDelay(100,40,5,255);
+  } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
+    beep.noDelay(100,40,9,255);
+  } */
+
   display();
   
   beep.loop();
@@ -456,18 +462,19 @@ void startMeas() {
 
 void getTemp() {
   float tempUTRaw[sensorsUT.getDeviceCount()];
-  if (sensorsIN.getCheckForConversion()==true) {
+  //if (sensorsIN.getCheckForConversion()==true) {
     tempIN = sensorsIN.getTempCByIndex(0);
-  }
-  if (sensorsOUT.getCheckForConversion()==true) {
+  //}
+  //if (sensorsOUT.getCheckForConversion()==true) {
     tempOUT = sensorsOUT.getTempCByIndex(0);
+  //}
+  //if (sensorsUT.getCheckForConversion()==true) {
+  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+    //Serial.println(sensorsUT.getTempCByIndex(i));
+    tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
   }
-  if (sensorsUT.getCheckForConversion()==true) {
-    for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-      //Serial.println(sensorsUT.getTempCByIndex(i));
-      tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
-    }
-   
+  //}
+  
     //remaping temp
 //Rad1 - LivingRoom 
 //Rad2 - BedroomNew
@@ -478,21 +485,19 @@ void getTemp() {
 //Rad7 -
 //Rad8 - 
 
-    tempUT[0]=tempUTRaw[5];
-    tempUT[1]=tempUTRaw[4];
-    tempUT[2]=tempUTRaw[3];
-    tempUT[3]=tempUTRaw[7];
-    tempUT[4]=tempUTRaw[0];
-    tempUT[5]=tempUTRaw[1];
-    tempUT[6]=tempUTRaw[2];
-    tempUT[7]=tempUTRaw[6];
-    tempUT[8]=tempUTRaw[7];
-    tempUT[9]=tempUTRaw[8];
+  tempUT[0]=tempUTRaw[5];
+  tempUT[1]=tempUTRaw[4];
+  tempUT[2]=tempUTRaw[3];
+  tempUT[3]=tempUTRaw[7];
+  tempUT[4]=tempUTRaw[0];
+  tempUT[5]=tempUTRaw[1];
+  tempUT[6]=tempUTRaw[2];
+  tempUT[7]=tempUTRaw[6];
+  tempUT[8]=tempUTRaw[7];
+  tempUT[9]=tempUTRaw[8];
 
-    firstMeasComplete=true;
-    /*tempUT[10]=0;
-    tempUT[11]=0;*/
-  }
+  firstMeasComplete=true;
+  Serial.println(millis());
 }
 
 void printTemp() {
@@ -581,7 +586,7 @@ void displayTemp() {
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
-      addSpaces((int)tempUT[sensor]);
+      //addSpaces((int)tempUT[sensor]);
       lcd.print((int)tempUT[sensor]);    
     }
 
@@ -595,12 +600,12 @@ void displayTemp() {
       addSpaces((int)tempUT[++sensor]);
       lcd.print((int)tempUT[sensor]);    
     }
-    lcd.setCursor(9, radka++);
+    lcd.setCursor(9, radka);
     lcd.print("/");
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
-      addSpaces((int)tempUT[++sensor]);
+      //addSpaces((int)tempUT[++sensor]);
       lcd.print((int)tempUT[sensor++]);    
     }
 
@@ -619,7 +624,7 @@ void displayTemp() {
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
-      addSpaces((int)tempUT[++sensor]);
+      //addSpaces((int)tempUT[++sensor]);
       lcd.print((int)tempUT[sensor++]);    
     }
   }
@@ -633,12 +638,12 @@ void displayTemp() {
 }
 
 void displayTempErr() {
-  lcd.print("Err");
+  lcd.print("Er");
 }
 
 
 void addSpaces(int cislo) {
-  if (cislo<100 && cislo>0) lcd.print(" ");
+  //if (cislo<100 && cislo>0) lcd.print(" ");
   if (cislo<10 && cislo>0) lcd.print(" ");
   if (cislo<=0 && cislo>-10) lcd.print(" ");
 }
