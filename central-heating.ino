@@ -87,8 +87,8 @@ DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
 DeviceAddress inThermometer, outThermometer;
+DeviceAddress utT[15];
 #define TEMPERATURE_PRECISION 12
-
 
 const unsigned long   measDelay                = 10000; //in ms
 unsigned long         lastMeas                 = measDelay * -1;
@@ -242,13 +242,13 @@ void setup(void) {
   
 #ifdef DS1307
   if (RTC.read(tm)) {
-    Serial.print("RTC OK, Time = ");
+    Serial.print(F("RTC OK, Time = "));
     print2digits(tm.Hour);
     Serial.write(':');
     print2digits(tm.Minute);
     Serial.write(':');
     print2digits(tm.Second);
-    Serial.print(", Date (D/M/Y) = ");
+    Serial.print(F(", Date (D/M/Y) = "));
     Serial.print(tm.Day);
     Serial.write('/');
     Serial.print(tm.Month);
@@ -258,11 +258,11 @@ void setup(void) {
     Serial.println();
   } else {
     if (RTC.chipPresent()) {
-      Serial.println("The DS1307 is stopped.  Please run the SetTime");
-      Serial.println("example to initialize the time and begin running.");
+      Serial.println(F("The DS1307 is stopped.  Please run the SetTime"));
+      Serial.println(F("example to initialize the time and begin running."));
       Serial.println();
     } else {
-      Serial.println("DS1307 read error!  Please check the circuitry.");
+      Serial.println(F("DS1307 read error!  Please check the circuitry."));
       Serial.println();
     }
   }
@@ -270,21 +270,21 @@ void setup(void) {
 
 #ifdef time
   // Setup time library  
-  Serial.print("RTC Sync");
+  Serial.print(F("RTC Sync"));
   setSyncProvider(RTC.get);          // the function to get the time from the RTC
   if(timeStatus() == timeSet) {
-    Serial.println(" OK!");
+    Serial.println(F(" OK!"));
   } else {
-    Serial.println(" FAIL!");
+    Serial.println(F(" FAIL!"));
   }
   //printDateTime();
 #endif
   loadConfig();
-  Serial.print("Temp ON ");
+  Serial.print(F("Temp ON "));
   Serial.println(storage.tempON);
-  Serial.print("Temp OFF diff ");
+  Serial.print(F("Temp OFF diff "));
   Serial.println(storage.tempOFFDiff);
-  Serial.print("Temp alarm ");
+  Serial.print(F("Temp alarm "));
   Serial.println(storage.tempAlarm);
  
   pinMode(RELAYPIN, OUTPUT);
@@ -302,13 +302,13 @@ void setup(void) {
 
     if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
       beep.Delay(100,40,1,255);
-      Serial.println("NO temperature sensor(s) DS18B20 found!!!!!!!!!");
+      Serial.println(F("NO temperature sensor(s) DS18B20 found!!!!!!!!!"));
       lcd.setCursor(0, 1);
-      lcd.print("!NO temp.sensor(s)!!");
+      lcd.print(F("!NO temp.sensor(s)!!"));
       lcd.setCursor(0, 2);
-      lcd.print("!!!DS18B20 found!!!!");
+      lcd.print(F("!!!DS18B20 found!!!!"));
       lcd.setCursor(0, 3);
-      lcd.print("!!!!!Check wire!!!!!");
+      lcd.print(F("!!!!!Check wire!!!!!"));
 #ifdef time
       displayTime();
       //break;
@@ -328,49 +328,55 @@ void setup(void) {
 
   
   Serial.println();
-  Serial.print("Sensor(s) ");
+  Serial.print(F("Sensor(s) "));
   Serial.print(sensorsIN.getDeviceCount());
-  Serial.print(" on bus IN - pin ");
+  Serial.print(F(" on bus IN - pin "));
   Serial.println(ONE_WIRE_BUS_IN);
-  Serial.print("Device Address: ");
-  sensors.getAddress(inThermometer, 0); 
+  Serial.print(F("Device Address: "));
+  sensorsIN.getAddress(inThermometer, 0); 
   printAddress(inThermometer);
   Serial.println();
 
   lcd.setCursor(0,1);
-  lcd.print("Sen.");
+  lcd.print(F("Sen."));
   lcd.print(sensorsIN.getDeviceCount());
-  lcd.print(" bus IN");
+  lcd.print(F(" bus IN"));
 
-  Serial.print("Sensor(s) ");
+  Serial.print(F("Sensor(s) "));
   Serial.print(sensorsOUT.getDeviceCount());
-  Serial.print(" on bus OUT - pin ");
+  Serial.print(F(" on bus OUT - pin "));
   Serial.println(ONE_WIRE_BUS_OUT);
-  Serial.print("Device Address: ");
-  sensors.getAddress(outThermometer, 0); 
+  Serial.print(F("Device Address: "));
+  sensorsOUT.getAddress(outThermometer, 0); 
   printAddress(outThermometer);
   Serial.println();
    
   lcd.setCursor(0,2);
-  lcd.print("Sen.");
+  lcd.print(F("Sen."));
   lcd.print(sensorsOUT.getDeviceCount());
-  lcd.print(" bus OUT");
+  lcd.print(F(" bus OUT"));
  
-  Serial.print("Sensor(s) ");
+  Serial.print(F("Sensor(s) "));
   Serial.print(sensorsUT.getDeviceCount());
-  Serial.print(" on bus UT - pin ");
+  Serial.print(F(" on bus UT - pin "));
   Serial.println(ONE_WIRE_BUS_UT);
+  Serial.println(F("Device Address: "));
+  for (byte i = 0; i<sensorsUT.getDeviceCount(); i++) {
+    sensorsUT.getAddress(utT[i], i); 
+    printAddress(utT[i]);
+    Serial.println();
+  }
   
   lcd.setCursor(0,3);
-  lcd.print("Sen.");
+  lcd.print(F("Sen."));
   lcd.print(sensorsUT.getDeviceCount());
-  lcd.print(" bus UT");
+  lcd.print(F(" bus UT"));
 
   
   
-  Serial.print("Send interval ");
+  Serial.print(F("Send interval "));
   Serial.print(sendDelay);
-  Serial.println(" sec");
+  Serial.println(F(" sec"));
   
   delay(1000);
   lcd.clear();
@@ -386,7 +392,7 @@ void setup(void) {
   
   lastSend=0;
   //lastMeas=-measDelay;
-  Serial.println("Setup end.");
+  Serial.println(F("Setup end."));
 }
 
 //bool first=true;
@@ -405,6 +411,7 @@ void loop(void) {
 #endif  
   if (millis() - lastMeas >= measDelay) {
     lastMeas = millis();
+    Serial.println(millis());
     startMeas(); 
     startConversion=true;
     startConversionMillis = millis();
@@ -430,9 +437,9 @@ void loop(void) {
     }
 
     if (relay == LOW) {
-      Serial.println("Relay ON");
+      Serial.println(F("Relay ON"));
     } else {
-      Serial.println("Relay OFF");
+      Serial.println(F("Relay OFF"));
     }
 
     digitalWrite(RELAYPIN,!relay);
@@ -470,21 +477,44 @@ void loop(void) {
 void startMeas() {
   // call sensors.requestTemperatures() to issue a global temperature 
   // request to all devices on the bus
-  Serial.print("Requesting temperatures...");
+  Serial.print(F("Requesting temperatures..."));
   sensorsIN.requestTemperatures(); // Send the command to get temperatures
   sensorsOUT.requestTemperatures(); // Send the command to get temperatures
   sensorsUT.requestTemperatures(); // Send the command to get temperatures
-  Serial.println("DONE");
+  Serial.println(F("DONE"));
 }
 
 void getTemp() {
-  float tempUTRaw[sensorsUT.getDeviceCount()];
+  DeviceAddress da;
   tempIN = sensorsIN.getTempCByIndex(0);
   tempOUT = sensorsOUT.getTempCByIndex(0);
   for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-    tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
+    sensorsUT.getAddress(da, i); 
+    printAddress(da);
+    Serial.println();
+    if (da[7]=="142") {
+      tempUT[4]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="192") {
+      tempUT[5]=sensorsUT.getTempCByIndex(i);
+    } else if(da[7]=="237") {
+      tempUT[6]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="36") {
+      tempUT[2]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="222") {
+      tempUT[1]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="30") {
+      tempUT[0]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="253") {
+      tempUT[7]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="62") {
+      tempUT[8]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="133") {
+      tempUT[3]=sensorsUT.getTempCByIndex(i);
+    } else if (da[7]=="53") {
+      tempUT[9]=sensorsUT.getTempCByIndex(i);
+    }
   }
-  
+ 
     //remaping temp
   //Rad1 - LivingRoom 
   //Rad2 - BedroomNew
@@ -495,32 +525,20 @@ void getTemp() {
   //Rad7 -
   //Rad8 - 
 
-  tempUT[0]=tempUTRaw[5];
-  tempUT[1]=tempUTRaw[4];
-  tempUT[2]=tempUTRaw[3];
-  tempUT[3]=tempUTRaw[7];
-  tempUT[4]=tempUTRaw[0];
-  tempUT[5]=tempUTRaw[1];
-  tempUT[6]=tempUTRaw[2];
-  tempUT[7]=tempUTRaw[6];
-  tempUT[8]=tempUTRaw[7];
-  tempUT[9]=tempUTRaw[8];
-
   firstMeasComplete=true;
-  Serial.println(millis());
 }
 
 void printTemp() {
-  Serial.print("Temp IN: ");
+  Serial.print(F("Temp IN: "));
   Serial.print(tempIN); 
   Serial.println();
-  Serial.print("Temp OUT: ");
+  Serial.print(F("Temp OUT: "));
   Serial.print(tempOUT); 
   Serial.println();
   for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-    Serial.print("Temp UT[");
+    Serial.print(F("Temp UT["));
     Serial.print(i);
-    Serial.print("]: ");
+    Serial.print(F("]: "));
     Serial.print(tempUT[i]); 
     Serial.println();
   }
@@ -560,7 +578,7 @@ void displayTemp() {
 #endif
 
   lcd.setCursor(0, 0); //col,row
-  lcd.print("       ");
+  lcd.print(F("       "));
   lcd.setCursor(0, 0); //col,row
   if (tempIN==TEMP_ERR) {
     displayTempErr();
@@ -569,7 +587,7 @@ void displayTemp() {
     lcd.print((int)tempIN);
   }
   lcd.setCursor(2, 0); //col,row
-  lcd.print("/");
+  lcd.print(F("/"));
   //addSpaces((int)tempOUT);
   if (tempOUT==TEMP_ERR) {
     displayTempErr();
@@ -592,7 +610,7 @@ void displayTemp() {
       lcd.print((int)tempUT[sensor]);
     }
     lcd.setCursor(2, radka);
-    lcd.print("/");
+    lcd.print(F("/"));
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
@@ -611,7 +629,7 @@ void displayTemp() {
       lcd.print((int)tempUT[sensor]);    
     }
     lcd.setCursor(9, radka);
-    lcd.print("/");
+    lcd.print(F("/"));
     if (tempUT[++sensor]==TEMP_ERR) {
       displayTempErr();
     }else {
@@ -705,7 +723,7 @@ void setTime() {
       //use the convenience macros from Time.h to do the conversions.
       int y = Serial.parseInt();
       if (y >= 100 && y < 1000)
-        Serial.println("Error: Year must be two digits or four digits!");
+        Serial.println(F("Error: Year must be two digits or four digits!"));
       else {
         if (y >= 1000)
           tm.Year = CalendarYrToTm(y);
@@ -720,11 +738,11 @@ void setTime() {
     //use the time_t value to ensure correct weekday is set
         if(RTC.set(t) == 0) { // Success
           setTime(t);
-          Serial.println("RTC set");
+          Serial.println(F("RTC set"));
           //printDateTime(t);
           //Serial.println();
         }else
-          Serial.println("RTC set failed!");
+          Serial.println(F("RTC set failed!"));
           //dump any extraneous input
           while (Serial.available() > 0) Serial.read();
       }
@@ -1018,21 +1036,21 @@ void displayInfo() {
   lcd.print(versionSW);
 
   lcd.setCursor(0,1);
-  lcd.print("Temp ON:");
+  lcd.print(F("Temp ON:"));
   lcd.print(storage.tempON);
 
   lcd.setCursor(0,2);
-  lcd.print("Temp OFF diff:");
+  lcd.print(F("Temp OFF diff:"));
   lcd.print(storage.tempOFFDiff);
   
   lcd.setCursor(0,3);
-  lcd.print("Temp alarm:");
+  lcd.print(F("Temp alarm:"));
   lcd.print(storage.tempAlarm);
 }
 
 void setTempON() {
   lcd.setCursor(0,3);
-  lcd.print("Temp ON:");
+  lcd.print(F("Temp ON:"));
   if (displayVarSub==31) {
     storage.tempON++;
   }
