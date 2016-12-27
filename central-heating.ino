@@ -86,6 +86,10 @@ DallasTemperature sensorsOUT(&oneWireOUT);
 DallasTemperature sensorsIN(&oneWireIN);
 DallasTemperature sensorsUT(&oneWireUT);
 
+DeviceAddress inThermometer, outThermometer;
+#define TEMPERATURE_PRECISION 12
+
+
 const unsigned long   measDelay                = 10000; //in ms
 unsigned long         lastMeas                 = measDelay * -1;
 const unsigned long   measTime                 = 750; //in ms
@@ -102,7 +106,8 @@ const unsigned long   pumpProtectRun           = 300000;     //1000*60*5;     //
 bool                  firstMeasComplete        = false;
 #define TEMP_ERR -127     
                     
-unsigned long const SERIAL_SPEED                = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
+unsigned long const SERIAL_SPEED               = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
+unsigned long const COMM_SPEED                 = 9600;
 
 #define DS1307
 
@@ -233,7 +238,7 @@ void setup(void) {
   lcd.clear();
   lcd.print(versionSWString);
   lcd.print(versionSW);
-  mySerial.begin(9600);
+  mySerial.begin(COMM_SPEED);
   
 #ifdef DS1307
   if (RTC.read(tm)) {
@@ -314,11 +319,11 @@ void setup(void) {
     delay(800);
   }
 
-  sensorsOUT.setResolution(12);
+  sensorsOUT.setResolution(TEMPERATURE_PRECISION);
   sensorsOUT.setWaitForConversion(false);
-  sensorsIN.setResolution(12);
+  sensorsIN.setResolution(TEMPERATURE_PRECISION);
   sensorsIN.setWaitForConversion(false);
-  sensorsUT.setResolution(12);
+  sensorsUT.setResolution(TEMPERATURE_PRECISION);
   sensorsUT.setWaitForConversion(false);
 
   
@@ -327,30 +332,42 @@ void setup(void) {
   Serial.print(sensorsIN.getDeviceCount());
   Serial.print(" on bus IN - pin ");
   Serial.println(ONE_WIRE_BUS_IN);
+  Serial.print("Device Address: ");
+  sensors.getAddress(inThermometer, 0); 
+  printAddress(inThermometer);
+  Serial.println();
 
   lcd.setCursor(0,1);
   lcd.print("Sen.");
   lcd.print(sensorsIN.getDeviceCount());
   lcd.print(" bus IN");
+
+  Serial.print("Sensor(s) ");
+  Serial.print(sensorsOUT.getDeviceCount());
+  Serial.print(" on bus OUT - pin ");
+  Serial.println(ONE_WIRE_BUS_OUT);
+  Serial.print("Device Address: ");
+  sensors.getAddress(outThermometer, 0); 
+  printAddress(outThermometer);
+  Serial.println();
    
   lcd.setCursor(0,2);
   lcd.print("Sen.");
   lcd.print(sensorsOUT.getDeviceCount());
   lcd.print(" bus OUT");
  
+  Serial.print("Sensor(s) ");
+  Serial.print(sensorsUT.getDeviceCount());
+  Serial.print(" on bus UT - pin ");
+  Serial.println(ONE_WIRE_BUS_UT);
+  
   lcd.setCursor(0,3);
   lcd.print("Sen.");
   lcd.print(sensorsUT.getDeviceCount());
   lcd.print(" bus UT");
 
-  Serial.print("Sensor(s) ");
-  Serial.print(sensorsOUT.getDeviceCount());
-  Serial.print(" on bus OUT - pin ");
-  Serial.println(ONE_WIRE_BUS_OUT);
-  Serial.print("Sensor(s) ");
-  Serial.print(sensorsUT.getDeviceCount());
-  Serial.print(" on bus UT - pin ");
-  Serial.println(ONE_WIRE_BUS_UT);
+  
+  
   Serial.print("Send interval ");
   Serial.print(sendDelay);
   Serial.println(" sec");
@@ -462,28 +479,21 @@ void startMeas() {
 
 void getTemp() {
   float tempUTRaw[sensorsUT.getDeviceCount()];
-  //if (sensorsIN.getCheckForConversion()==true) {
-    tempIN = sensorsIN.getTempCByIndex(0);
-  //}
-  //if (sensorsOUT.getCheckForConversion()==true) {
-    tempOUT = sensorsOUT.getTempCByIndex(0);
-  //}
-  //if (sensorsUT.getCheckForConversion()==true) {
+  tempIN = sensorsIN.getTempCByIndex(0);
+  tempOUT = sensorsOUT.getTempCByIndex(0);
   for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-    //Serial.println(sensorsUT.getTempCByIndex(i));
     tempUTRaw[i]=sensorsUT.getTempCByIndex(i);
   }
-  //}
   
     //remaping temp
-//Rad1 - LivingRoom 
-//Rad2 - BedroomNew
-//Rad3 - WorkRoom
-//Rad4 - BedRoomOld
-//Rad5 - Bojler
-//Rad6 - 
-//Rad7 -
-//Rad8 - 
+  //Rad1 - LivingRoom 
+  //Rad2 - BedroomNew
+  //Rad3 - WorkRoom
+  //Rad4 - BedRoomOld
+  //Rad5 - Bojler
+  //Rad6 - 
+  //Rad7 -
+  //Rad8 - 
 
   tempUT[0]=tempUTRaw[5];
   tempUT[1]=tempUTRaw[4];
@@ -1031,4 +1041,15 @@ void setTempON() {
   }
   displayVarSub=0;
   lcd.print(storage.tempON);
+}
+
+// function to print a device address
+void printAddress(DeviceAddress deviceAddress)
+{
+  for (uint8_t i = 0; i < 8; i++)
+  {
+    // zero pad the address if necessary
+    if (deviceAddress[i] < 16) Serial.print("0");
+    Serial.print(deviceAddress[i], HEX);
+  }
 }
