@@ -57,7 +57,10 @@ D13             - BUZZER
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+//#define beep
+#ifdef beep
 #include "beep.h"
+#endif
 #include <EEPROM.h>
 #include <avr/wdt.h>
 
@@ -67,9 +70,13 @@ D13             - BUZZER
 #define ONE_WIRE_BUS_UT                     5
 #define RELAYPIN                            6
 #define LEDPIN                              8
+#ifdef beep
 #define BUZZERPIN                           13
+#endif
 
+#ifdef beep
 Beep beep(BUZZERPIN);
+#endif
 
 #define IN                                  0
 #define OUT                                 1
@@ -93,7 +100,7 @@ DeviceAddress utT[15];
 const unsigned long   measDelay                = 10000; //in ms
 unsigned long         lastMeas                 = measDelay * -1;
 const unsigned long   measTime                 = 750; //in ms
-const unsigned long   sendDelay                = 20000; //in ms
+const unsigned long   sendDelay                = 60000; //in ms
 unsigned long         lastSend                 = sendDelay * -1;
 bool                  startConversion          = false;
 unsigned long         startConversionMillis    = 0;
@@ -121,7 +128,7 @@ unsigned long const COMM_SPEED                 = 9600;
 
 #ifdef time
 #include <Time.h>
-#include <Streaming.h>        
+//#include <Streaming.h>        
 #include <Time.h>             
 bool parse=false;
 bool config=false;
@@ -171,7 +178,8 @@ struct StoreStruct {
 #define POL          POSITIVE
 #define LCDROWS      4
 #define LCDCOLS      20
-LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
+//LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
+LiquidCrystal_I2C lcd(LCDADDRESS,20,4);  // set the LCD
 
 #include <SoftwareSerial.h>
 #define RX A2
@@ -214,7 +222,6 @@ char hexaKeys[ROWS][COLS]                 = {
                                             {'D','C','B','A'}
 };
 byte displayVar=1;
-byte displayVarSub=1;
 #endif
 
 
@@ -231,8 +238,9 @@ void setup(void) {
   Serial.begin(SERIAL_SPEED);
   Serial.print(versionSWString);
   Serial.println(versionSW);
+#ifdef beep
   beep.Delay(100,40,1,255);
-  
+#endif  
   lcd.begin(LCDCOLS,LCDROWS);               // initialize the lcd 
   lcd.setBacklight(255);
   lcd.clear();
@@ -277,7 +285,6 @@ void setup(void) {
   } else {
     Serial.println(F(" FAIL!"));
   }
-  //printDateTime();
 #endif
   loadConfig();
   Serial.print(F("Temp ON "));
@@ -291,8 +298,9 @@ void setup(void) {
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,!relay);
+#ifdef beep
   pinMode(BUZZERPIN, OUTPUT);
-
+#endif
   delay(1000);
   lcd.clear();
   while (true) {
@@ -301,7 +309,9 @@ void setup(void) {
     sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
 
     if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
+#ifdef beep
       beep.Delay(100,40,1,255);
+#endif
       Serial.println(F("NO temperature sensor(s) DS18B20 found!!!!!!!!!"));
       lcd.setCursor(0, 1);
       lcd.print(F("!NO temp.sensor(s)!!"));
@@ -395,14 +405,8 @@ void setup(void) {
   Serial.println(F("Setup end."));
 }
 
-//bool first=true;
 /////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
 void loop(void) { 
-/*  if (first) {
-    beep.noDelay(100,40,4,255);
-    first=false;
-  }
-*/  
 #ifdef watchdog
   wdt_reset();
 #endif  
@@ -422,7 +426,6 @@ void loop(void) {
     printTemp();
     //poslani teploty do LED displeje
     Wire.beginTransmission(8);
-    //tempOUT=random(0,100);
     Wire.write((byte)tempOUT);
     Wire.endTransmission();
 
@@ -451,7 +454,9 @@ void loop(void) {
   }
 
   if (tempOUT >= storage.tempAlarm) {
+#ifdef beep    
     beep.noDelay(100,40,3,255);
+#endif
   }
   /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
     beep.noDelay(100,40,3,255);
@@ -462,9 +467,9 @@ void loop(void) {
   } */
 
   display();
-  
+#ifdef beep  
   beep.loop();
-  
+#endif  
   keyPressed();
   keyBoard();
   
@@ -599,62 +604,10 @@ void displayTemp() {
   byte sensor=0;
   byte radiator=1;
   for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+6) {
-    lcd.setCursor(0, radka);
-    //lcd.print(radiator++);
-    //lcd.print(":        ");
-    //lcd.setCursor(2, radka);
-    if (tempUT[sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      addSpaces((int)tempUT[sensor]);
-      lcd.print((int)tempUT[sensor]);
-    }
-    lcd.setCursor(2, radka);
-    lcd.print(F("/"));
-    if (tempUT[++sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      //addSpaces((int)tempUT[sensor]);
-      lcd.print((int)tempUT[sensor]);    
-    }
+    displayRadTemp(0, radka, sensor);
+    displayRadTemp(7, radka, ++sensor);
+    displayRadTemp(14, radka, ++sensor);
 
-    lcd.setCursor(7, radka);
-    //lcd.print(radiator++);
-    //lcd.print(":        ");
-    //lcd.setCursor(12, radka);
-    if (tempUT[sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      addSpaces((int)tempUT[++sensor]);
-      lcd.print((int)tempUT[sensor]);    
-    }
-    lcd.setCursor(9, radka);
-    lcd.print(F("/"));
-    if (tempUT[++sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      //addSpaces((int)tempUT[++sensor]);
-      lcd.print((int)tempUT[sensor++]);    
-    }
-
-    lcd.setCursor(14, radka);
-    //lcd.print(radiator++);
-    //lcd.print(":        ");
-    //lcd.setCursor(12, radka);
-    if (tempUT[sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      addSpaces((int)tempUT[++sensor]);
-      lcd.print((int)tempUT[sensor]);    
-    }
-    lcd.setCursor(16, radka++);
-    lcd.print("/");
-    if (tempUT[++sensor]==TEMP_ERR) {
-      displayTempErr();
-    }else {
-      //addSpaces((int)tempUT[++sensor]);
-      lcd.print((int)tempUT[sensor++]);    
-    }
   }
 
   lcd.setCursor(8, 0);
@@ -663,6 +616,23 @@ void displayTemp() {
   }else{
     lcd.print("CER");
   }
+}
+
+void displayRadTemp(byte radka, byte sloupec, byte sensor) {
+    lcd.setCursor(sloupec, radka);
+    if (tempUT[sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      addSpaces((int)tempUT[sensor]);
+      lcd.print((int)tempUT[sensor]);
+    }
+    lcd.setCursor(sloupec+2, radka);
+    lcd.print(F("/"));
+    if (tempUT[++sensor]==TEMP_ERR) {
+      displayTempErr();
+    }else {
+      lcd.print((int)tempUT[sensor]);    
+    }
 }
 
 void displayTempErr() {
@@ -711,43 +681,43 @@ void testPumpProtect() {
   //if (storage.lastPumpRun
 }
 
-void setTime() {
-  static time_t tLast;
-  time_t t;
+// void setTime() {
+  // static time_t tLast;
+  // time_t t;
   
-  tmElements_t tm;
-  //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
-  if (Serial.available() >= 12) {
-      //note that the tmElements_t Year member is an offset from 1970,
-      //but the RTC wants the last two digits of the calendar year.
-      //use the convenience macros from Time.h to do the conversions.
-      int y = Serial.parseInt();
-      if (y >= 100 && y < 1000)
-        Serial.println(F("Error: Year must be two digits or four digits!"));
-      else {
-        if (y >= 1000)
-          tm.Year = CalendarYrToTm(y);
-        else    //(y < 100)
-          tm.Year = y2kYearToTm(y);
-          tm.Month = Serial.parseInt();
-          tm.Day = Serial.parseInt();
-          tm.Hour = Serial.parseInt();
-          tm.Minute = Serial.parseInt();
-          tm.Second = Serial.parseInt();
-          t = makeTime(tm);
-    //use the time_t value to ensure correct weekday is set
-        if(RTC.set(t) == 0) { // Success
-          setTime(t);
-          Serial.println(F("RTC set"));
-          //printDateTime(t);
-          //Serial.println();
-        }else
-          Serial.println(F("RTC set failed!"));
-          //dump any extraneous input
-          while (Serial.available() > 0) Serial.read();
-      }
-  }
-}
+  // tmElements_t tm;
+  // //check for input to set the RTC, minimum length is 12, i.e. yy,m,d,h,m,s
+  // if (Serial.available() >= 12) {
+      // //note that the tmElements_t Year member is an offset from 1970,
+      // //but the RTC wants the last two digits of the calendar year.
+      // //use the convenience macros from Time.h to do the conversions.
+      // int y = Serial.parseInt();
+      // if (y >= 100 && y < 1000)
+        // Serial.println(F("Error: Year must be two digits or four digits!"));
+      // else {
+        // if (y >= 1000)
+          // tm.Year = CalendarYrToTm(y);
+        // else    //(y < 100)
+          // tm.Year = y2kYearToTm(y);
+          // tm.Month = Serial.parseInt();
+          // tm.Day = Serial.parseInt();
+          // tm.Hour = Serial.parseInt();
+          // tm.Minute = Serial.parseInt();
+          // tm.Second = Serial.parseInt();
+          // t = makeTime(tm);
+    // //use the time_t value to ensure correct weekday is set
+        // if(RTC.set(t) == 0) { // Success
+          // setTime(t);
+          // Serial.println(F("RTC set"));
+          // //printDateTime(t);
+          // //Serial.println();
+        // }else
+          // Serial.println(F("RTC set failed!"));
+          // //dump any extraneous input
+          // while (Serial.available() > 0) Serial.read();
+      // }
+  // }
+// }
 
 #endif
 
@@ -886,27 +856,20 @@ void keyBoard() {
   //char customKey = customKeypad.getKey();
   if (key!=' '){
     Serial.println(key);
-    if (displayVar == 3) {
-      if (key=='*') {
-        displayVarSub=31;
-        //Serial.println(displayVarSub);
-      } else if (key=='D') {
-        displayVarSub=32;
-        //Serial.println(displayVarSub);
-      }
-      return;
-    }
 
+    lcd.clear();
     if (key=='1') {
-      lcd.clear();
       displayVar = 1;
     } else if (key=='2') {
-      lcd.clear();
       displayVar = 2;
     } else if (key=='3') {
-      lcd.clear();
       displayVar = 3;
+    } else if (key=='4') {
+      displayVar = 4;
+    } else if (key=='5') {
+      displayVar = 5;
     }
+
     /*
     Keyboard layout
     -----------
@@ -915,22 +878,22 @@ void keyBoard() {
     | 7 8 9 C |
     | * 0 # D |
     -----------
-    1 - total energy
-    2 - TempDiffON
-    3 - TempDiffOFF
-    A - BACKLIGHT ON/OFF
-    4 - Energy koef
-    5 - Max IN OUT temp
-    6 - Max bojler
+    1 - normal - zobrazeni teplot
+    2 - verze FW, teoplota spinaní, diference, teplota alarmu
+    3 - nastavení teploty spínání
+    A - 
+    4 - nastavení teploty diference
+    5 - nastavení teploty alarmu
+    6 - nastavení hodin
     B - 
-    7 - Max power today
-    8 - Control sensor
-    9 - total time
-    C - DISPLAY CLEAR
-    * - Save total energy to EEPROM
+    7 - 
+    8 - 
+    9 - 
+    C - 
+    * - 
     0 -
-    # - Select control sensor
-    D - manual/auto
+    # - 
+    D - 
     */
     key = ' ';
   }
@@ -1023,10 +986,10 @@ void display() {
     displayInfo();
   } else if (displayVar==3) {
     setTempON();
-  } else if (displayVar==31) {
-    setTempON();
-  } else if (displayVar==32) {
-    setTempON();
+  } else if (displayVar==4) {
+    setTempDiff();
+  } else if (displayVar==5) {
+    setTempAlarm();
   }
 }
 
@@ -1051,15 +1014,42 @@ void displayInfo() {
 void setTempON() {
   lcd.setCursor(0,3);
   lcd.print(F("Temp ON:"));
-  if (displayVarSub==31) {
+  if (key=="*") {
     storage.tempON++;
-  }
-  if (displayVarSub==32) {
+  } else if (key=="#") {
     storage.tempON--;
+  } else if (key=="D") {
+    saveConfig();
   }
-  displayVarSub=0;
   lcd.print(storage.tempON);
 }
+
+void setTempDiff() {
+  lcd.setCursor(0,3);
+  lcd.print(F("Temp diff:"));
+  if (key=="*") {
+    storage.tempOFFDiff++;
+  } else if (key=="#") {
+    storage.tempOFFDiff--;
+  } else if (key=="D") {
+    saveConfig();
+  }
+  lcd.print(storage.tempOFFDiff);
+}
+
+void setTempAlarm() {
+  lcd.setCursor(0,3);
+  lcd.print(F("Temp diff:"));
+  if (key=="*") {
+    storage.tempAlarm++;
+  } else if (key=="#") {
+    storage.tempAlarm--;
+  } else if (key=="D") {
+    saveConfig();
+  }
+  lcd.print(storage.tempAlarm);
+}
+
 
 // function to print a device address
 void printAddress(DeviceAddress deviceAddress)
