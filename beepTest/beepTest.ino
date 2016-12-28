@@ -1,6 +1,6 @@
 #include "beep.h"
 
-const byte pin=8;
+const byte pin=13;
 byte volume=255;
 int beepLength=100;
 int pauseLength=100;
