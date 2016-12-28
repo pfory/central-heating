@@ -346,7 +346,23 @@ void setup(void) {
   sensorsIN.getAddress(inThermometer, 0); 
   printAddress(inThermometer);
   Serial.println();
+  
+  
+  /*
+  uint8_t adresse[8];
+char adresse_formatee_hexa[24];
 
+sprintf(adresse_formatee_hexa,
+        "%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x",
+        adresse[0],
+        adresse[1],
+        adresse[2],
+        adresse[3],
+        adresse[4],
+        adresse[5],
+        adresse[6],
+        adresse[7]);
+*/
   lcd.setCursor(0,1);
   lcd.print(F("Sen."));
   lcd.print(sensorsIN.getDeviceCount());
