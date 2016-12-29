@@ -17,7 +17,7 @@ gpio.write(pinLed,gpio.LOW)
 tmr.delay(1000000)
 gpio.write(pinLed,gpio.HIGH)  
 
-versionSW                  = "0.8"
+versionSW                  = "0.9"
 versionSWString            = "Central Heating v" 
 print(versionSWString .. versionSW)
 
@@ -68,7 +68,7 @@ function sendData()
   prikaz = ""
   received=trim(received)
   print(received)
-  --received="#0;17.50#1;17.38#2;18.31#3;17.25#4;16.38#5;16.38#6;17.56#7;17.31#8;17.25#9;17.25#I;16.56#O;16.88#R;0$*"
+  --received="#0;59.81#1;32.88#2;48.44#3;30.44#4;8.94#5;8.69#6;17.06#7;14.06#8;36.44#9;36.44#A;11.06#B;11.13#I;55.13#O;62.44#R;0$*"
   if trim(received)~="" then 
     print(received)
     if string.find(received,"*")~=nil then 
@@ -83,40 +83,55 @@ function sendData()
          tOUTKamna = string.sub(value, 4, 99)
         end
         if prikaz == "0" then
-         t1 = string.sub(value, 4, 99)
+         t0 = string.sub(value, 4, 99)
         end
         if prikaz == "1" then
-         t2 = string.sub(value, 4, 99)
+         t1 = string.sub(value, 4, 99)
         end
         if prikaz == "2" then
-         t3 = string.sub(value, 4, 99)
+         t2 = string.sub(value, 4, 99)
         end
         if prikaz == "3" then
-         t4 = string.sub(value, 4, 99)
+         t3 = string.sub(value, 4, 99)
         end
         if prikaz == "4" then
-         t5 = string.sub(value, 4, 99)
+         t4 = string.sub(value, 4, 99)
         end
         if prikaz == "5" then
-         t6 = string.sub(value, 4, 99)
+         t5 = string.sub(value, 4, 99)
         end
         if prikaz == "6" then
-         t7 = string.sub(value, 4, 99)
+         t6 = string.sub(value, 4, 99)
         end
         if prikaz == "7" then
-         t8 = string.sub(value, 4, 99)
+         t7 = string.sub(value, 4, 99)
         end
         if prikaz == "8" then
-         t9 = string.sub(value, 4, 99)
+         t8 = string.sub(value, 4, 99)
         end
         if prikaz == "9" then
-         t10 = string.sub(value, 4, 99)
+         t9 = string.sub(value, 4, 99)
         end
         if prikaz == "A" then
-         t11 = string.sub(value, 4, 99)
+         t10 = string.sub(value, 4, 99)
         end
         if prikaz == "B" then
+         t11 = string.sub(value, 4, 99)
+        end
+        if prikaz == "C" then
          t12 = string.sub(value, 4, 99)
+        end
+        if prikaz == "D" then
+         t13 = string.sub(value, 4, 99)
+        end
+        if prikaz == "E" then
+         t14 = string.sub(value, 4, 99)
+        end
+        if prikaz == "F" then
+         t15 = string.sub(value, 4, 99)
+        end
+        if prikaz == "G" then
+         t16 = string.sub(value, 4, 99)
         end
 
         if prikaz == "R" then
@@ -135,6 +150,7 @@ function sendData()
     print("empty data")
     tINKamna=0
     tOUTKamna=0
+    t0=0
     t1=0
     t2=0
     t3=0
@@ -147,11 +163,16 @@ function sendData()
     t10=0
     t11=0
     t12=0
+    t13=0
+    t14=0
+    t15=0
+    t16=0
     sPumpKamna="OFF"
   end
   print(tINKamna)
   print(tOUTKamna)
   print(sPumpKamna)
+  print(t0)
   print(t1)
   print(t2)
   print(t3)
@@ -164,6 +185,10 @@ function sendData()
   print(t10)
   print(t11)
   print(t12)
+  print(t13)
+  print(t14)
+  print(t15)
+  print(t16)
   received=""
   
   if (emptyData) then 
@@ -172,6 +197,7 @@ function sendData()
     m:publish(base.."tINKamna",               string.format("%.1f",tINKamna),0,0)  
     m:publish(base.."tOUTKamna",              string.format("%.1f",tOUTKamna),0,0)  
     m:publish(base.."sPumpKamna/status",      sPumpKamna,0,0)  
+    m:publish(base.."t0",                     string.format("%.1f",t0),0,0)  
     m:publish(base.."t1",                     string.format("%.1f",t1),0,0)  
     m:publish(base.."t2",                     string.format("%.1f",t2),0,0)  
     m:publish(base.."t3",                     string.format("%.1f",t3),0,0)  
@@ -182,8 +208,12 @@ function sendData()
     m:publish(base.."t8",                     string.format("%.1f",t8),0,0)  
     m:publish(base.."t9",                     string.format("%.1f",t9),0,0)  
     m:publish(base.."t10",                    string.format("%.1f",t10),0,0)  
-    --m:publish(base.."t11",                    string.format("%.1f",t11),0,0)  
-    --m:publish(base.."t12",                    string.format("%.1f",t12),0,0)  
+    m:publish(base.."t11",                    string.format("%.1f",t11),0,0)  
+    -- m:publish(base.."t12",                    string.format("%.1f",t12),0,0)  
+    -- m:publish(base.."t13",                    string.format("%.1f",t13),0,0)  
+    -- m:publish(base.."t14",                    string.format("%.1f",t14),0,0)  
+    -- m:publish(base.."t15",                    string.format("%.1f",t15),0,0)  
+    -- m:publish(base.."t16",                    string.format("%.1f",t16),0,0)  
     gpio.write(pinLed,gpio.HIGH)  
   end
 end

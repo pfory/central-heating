@@ -13,8 +13,6 @@ Version history:
 0.4 - 23.2.2016 - add RTC, prenos teploty na satelit
 0.3 - 16.1.2015
 
-compilated by Arduino 1.6.4
-
 --------------------------------------------------------------------------------------------------------------------------
 HW
 Pro Mini 328
@@ -48,7 +46,7 @@ D13             - BUZZER
 --------------------------------------------------------------------------------------------------------------------------
 */
 
-#define watchdog //enable this only on board with optiboot bootloader
+//#define watchdog //enable this only on board with optiboot bootloader
 #ifdef watchdog
 #include <avr/wdt.h>
 #endif
@@ -57,10 +55,6 @@ D13             - BUZZER
 #include <Wire.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-//#define beep
-#ifdef beep
-#include "beep.h"
-#endif
 #include <EEPROM.h>
 #include <avr/wdt.h>
 
@@ -70,18 +64,12 @@ D13             - BUZZER
 #define ONE_WIRE_BUS_UT                     5
 #define RELAYPIN                            6
 #define LEDPIN                              8
-#ifdef beep
 #define BUZZERPIN                           13
-#endif
-
-#ifdef beep
-Beep beep(BUZZERPIN);
-#endif
 
 #define IN                                  0
 #define OUT                                 1
-#define RELAY                               100
-#define RELAYTEMP                           101
+//#define RELAY                               100
+//#define RELAYTEMP                           101
 
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWireOUT(ONE_WIRE_BUS_OUT);
@@ -100,7 +88,7 @@ DeviceAddress utT[15];
 const unsigned long   measDelay                = 10000; //in ms
 unsigned long         lastMeas                 = measDelay * -1;
 const unsigned long   measTime                 = 750; //in ms
-const unsigned long   sendDelay                = 60000; //in ms
+const unsigned long   sendDelay                = 20000; //in ms
 unsigned long         lastSend                 = sendDelay * -1;
 bool                  startConversion          = false;
 unsigned long         startConversionMillis    = 0;
@@ -111,13 +99,20 @@ bool                  relay                    = HIGH;
 const unsigned long   pumpProtect              = 864000000;  //1000*60*60*24*10; //in ms = 10 day, max 49 days
 const unsigned long   pumpProtectRun           = 300000;     //1000*60*5;     //in ms = 5 min
 bool                  firstMeasComplete        = false;
+bool                  tempRefresh              = false;
 #define TEMP_ERR -127     
                     
 unsigned long const SERIAL_SPEED               = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
 unsigned long const COMM_SPEED                 = 9600;
 
-#define DS1307
+#define beep
+#ifdef beep
+#include "beep.h"
+Beep peep(BUZZERPIN);
+#endif
 
+
+#define DS1307
 #ifdef DS1307
 #include <DS1307RTC.h>
 #include <Time.h>
@@ -133,10 +128,6 @@ unsigned long const COMM_SPEED                 = 9600;
 bool parse=false;
 bool config=false;
 tmElements_t    tm;
-const char *monthName[12] = {
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-};
 bool isTime = true;
 #endif
 
@@ -178,8 +169,8 @@ struct StoreStruct {
 #define POL          POSITIVE
 #define LCDROWS      4
 #define LCDCOLS      20
-//LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
-LiquidCrystal_I2C lcd(LCDADDRESS,20,4);  // set the LCD
+LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
+//LiquidCrystal_I2C lcd(LCDADDRESS,20,4);  // set the LCD
 
 #include <SoftwareSerial.h>
 #define RX A2
@@ -222,12 +213,13 @@ char hexaKeys[ROWS][COLS]                 = {
                                             {'D','C','B','A'}
 };
 byte displayVar=1;
+char displayVarSub=' ';
 #endif
 
 
 
 //SW name & version
-float const   versionSW                   = 0.61;
+float const   versionSW                   = 0.63;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -239,7 +231,7 @@ void setup(void) {
   Serial.print(versionSWString);
   Serial.println(versionSW);
 #ifdef beep
-  beep.Delay(100,40,1,255);
+  peep.Delay(100,40,1,255);
 #endif  
   lcd.begin(LCDCOLS,LCDROWS);               // initialize the lcd 
   lcd.setBacklight(255);
@@ -298,19 +290,16 @@ void setup(void) {
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,!relay);
-#ifdef beep
-  pinMode(BUZZERPIN, OUTPUT);
-#endif
   delay(1000);
   lcd.clear();
   while (true) {
-    sensorsOUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-    sensorsIN.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
-    sensorsUT.begin(); // IC Default 9 bit. If you have troubles consider upping it 12. Ups the delay giving the IC more time to process the temperature measurement
+    sensorsOUT.begin(); 
+    sensorsIN.begin(); 
+    sensorsUT.begin(); 
 
     if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
 #ifdef beep
-      beep.Delay(100,40,1,255);
+      peep.Delay(100,40,1,255);
 #endif
       Serial.println(F("NO temperature sensor(s) DS18B20 found!!!!!!!!!"));
       lcd.setCursor(0, 1);
@@ -439,7 +428,8 @@ void loop(void) {
   if (startConversion && (millis() - startConversionMillis >= measTime)) {
     startConversion=false;
     getTemp();
-    printTemp();
+    //printTemp();
+    tempRefresh = true;
     //poslani teploty do LED displeje
     Wire.beginTransmission(8);
     Wire.write((byte)tempOUT);
@@ -471,20 +461,20 @@ void loop(void) {
 
   if (tempOUT >= storage.tempAlarm) {
 #ifdef beep    
-    beep.noDelay(100,40,3,255);
+    peep.noDelay(100,40,3,255);
 #endif
   }
   /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
-    beep.noDelay(100,40,3,255);
+    peep.noDelay(100,40,3,255);
   } else if ((tempOUT || tempIN) >= storage.tempAlarm+5 && (tempOUT || tempIN) < storage.tempAlarm+10) {
-    beep.noDelay(100,40,5,255);
+    peep.noDelay(100,40,5,255);
   } else if ((tempOUT || tempIN) >= storage.tempAlarm+10) {
-    beep.noDelay(100,40,9,255);
+    peep.noDelay(100,40,9,255);
   } */
 
   display();
 #ifdef beep  
-  beep.loop();
+  peep.loop();
 #endif  
   keyPressed();
   keyBoard();
@@ -506,45 +496,92 @@ void startMeas() {
 }
 
 void getTemp() {
-  DeviceAddress da;
+  //DeviceAddress da;
   tempIN = sensorsIN.getTempCByIndex(0);
   tempOUT = sensorsOUT.getTempCByIndex(0);
-  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
-    sensorsUT.getAddress(da, i); 
-    printAddress(da);
-    Serial.println();
-    if (da[7]=="142") {
-      tempUT[4]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="192") {
-      tempUT[5]=sensorsUT.getTempCByIndex(i);
-    } else if(da[7]=="237") {
-      tempUT[6]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="36") {
-      tempUT[2]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="222") {
-      tempUT[1]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="30") {
-      tempUT[0]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="253") {
-      tempUT[7]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="62") {
-      tempUT[8]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="133") {
-      tempUT[3]=sensorsUT.getTempCByIndex(i);
-    } else if (da[7]=="53") {
-      tempUT[9]=sensorsUT.getTempCByIndex(i);
-    }
-  }
- 
-    //remaping temp
-  //Rad1 - LivingRoom 
-  //Rad2 - BedroomNew
-  //Rad3 - WorkRoom
-  //Rad4 - BedRoomOld
-  //Rad5 - Bojler
-  //Rad6 - 
-  //Rad7 -
-  //Rad8 - 
+
+  tempUT[0]=sensorsUT.getTempCByIndex(5);   //obyvak vstup
+  tempUT[1]=sensorsUT.getTempCByIndex(4);   //obyvak vystup
+  tempUT[2]=sensorsUT.getTempCByIndex(3);   //loznice nova vstup
+  tempUT[3]=sensorsUT.getTempCByIndex(11);  //loznice nova vystup
+  tempUT[4]=sensorsUT.getTempCByIndex(2);   //loznice stara vstup
+  tempUT[5]=sensorsUT.getTempCByIndex(9);   //loznice stara vystup 
+  tempUT[6]=sensorsUT.getTempCByIndex(1);   //dilna vstup
+  tempUT[7]=sensorsUT.getTempCByIndex(0);   //dilna vystup
+  tempUT[8]=sensorsUT.getTempCByIndex(8);   //bojler vstup
+  tempUT[9]=sensorsUT.getTempCByIndex(6);   //bojler vystup
+  tempUT[10]=sensorsUT.getTempCByIndex(7);  //chodba vstup
+  tempUT[11]=sensorsUT.getTempCByIndex(10); //chodba vystup
+  
+
+  /*
+  0 - 28FF60AA9015018E
+  1 - 28FFF438901501C0
+  2 - 28FF0C90901501ED
+  3 - 28FF62DF90150124
+  4 - 28FF0AE2901501DE
+  5 - 28FF79E2901501FD
+  6 - 28FFA568741603F0
+  7 - 28FFE5557416044F
+  8 - 28FF6D2F7316052D
+  9 - 28FFE3D79015013E
+  10 - 28FFBB2F00160185
+  11 - 28FF07E090150135
+
+
+  obyvak
+  I - 28FF79E2901501FD
+  O - 28FF0AE2901501DE
+
+  loznice nova
+  I - 28FF62DF90150124
+  O - 28FF07E090150135
+
+  loznice stara
+  I - 28FF0C90901501ED
+  O - 28FFE3D79015013E
+
+  dilna
+  I - 28FFF438901501C0
+  O - 28FF60AA9015018E
+
+  bojler
+  I - 28FF6D2F7316052D
+  O - 28FFA568741603F0
+
+  chodba
+  I - 28FFE5557416044F
+  O - 28FFBB2F00160185
+*/
+
+  // for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+
+      // tempUT[i]=sensorsUT.getTempCByIndex(i);
+    // /*sensorsUT.getAddress(da, i); 
+    // printAddress(da);
+    // Serial.println();
+    // if (da[7]=="142") {
+      // tempUT[4]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="192") {
+      // tempUT[5]=sensorsUT.getTempCByIndex(i);
+    // } else if(da[7]=="237") {
+      // tempUT[6]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="36") {
+      // tempUT[2]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="222") {
+      // tempUT[1]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="30") {
+      // tempUT[0]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="253") {
+      // tempUT[7]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="62") {
+      // tempUT[8]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="133") {
+      // tempUT[3]=sensorsUT.getTempCByIndex(i);
+    // } else if (da[7]=="53") {
+      // tempUT[9]=sensorsUT.getTempCByIndex(i);
+    // }*/
+  // }
 
   firstMeasComplete=true;
 }
@@ -556,13 +593,79 @@ void printTemp() {
   Serial.print(F("Temp OUT: "));
   Serial.print(tempOUT); 
   Serial.println();
-  for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
+  DeviceAddress da;
+  
+  Serial.print(tempUT[0]);
+  Serial.print(" obyvak vstup - ");
+  sensorsUT.getAddress(da, 4); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[1]);
+  Serial.print(" obyvak vystup - ");
+  sensorsUT.getAddress(da, 5); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[2]);
+  Serial.print(" loznice nova vstup - ");
+  sensorsUT.getAddress(da, 3); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[3]);
+  Serial.print(" loznice nova vystup - ");
+  sensorsUT.getAddress(da, 11); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[4]);
+  Serial.print(" loznice stara vstup - ");
+  sensorsUT.getAddress(da, 2); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[5]);
+  Serial.print(" loznice stara vystup - ");
+  sensorsUT.getAddress(da, 9); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[6]);
+  Serial.print(" dilna vstup - ");
+  sensorsUT.getAddress(da, 0); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[7]);
+  Serial.print(" dilna vystup - ");
+  sensorsUT.getAddress(da, 1); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[8]);
+  Serial.print(" bojler vstup - ");
+  sensorsUT.getAddress(da, 8); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[9]);
+  Serial.print(" bojler vystup - ");
+  sensorsUT.getAddress(da, 6); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[10]);
+  Serial.print(" hala vstup - ");
+  sensorsUT.getAddress(da, 7); 
+  printAddress(da);
+  Serial.println();
+  Serial.print(tempUT[11]);
+  Serial.print(" hala vystup - ");
+  sensorsUT.getAddress(da, 10); 
+  printAddress(da);
+  Serial.println();
+
+ /* for (byte i=0; i<sensorsUT.getDeviceCount(); i++) {
     Serial.print(F("Temp UT["));
     Serial.print(i);
     Serial.print(F("]: "));
     Serial.print(tempUT[i]); 
+    Serial.print(" - ");
+    sensorsUT.getAddress(da, i); 
+    printAddress(da);
     Serial.println();
-  }
+  }*/
 }
 
 void loadConfig() {
@@ -579,6 +682,11 @@ void saveConfig() {
   for (unsigned int t=0; t<sizeof(storage); t++) {
     EEPROM.write(CONFIG_START + t, *((char*)&storage + t));
   }
+  lcd.setCursor(0,3);
+  lcd.print(F("Saved to EEPROM."));
+  delay(2000);
+  displayVar=1;
+  lcd.clear();
 }
 
 //display
@@ -597,14 +705,17 @@ void displayTemp() {
 #ifdef time
   displayTime();
 #endif
-
+  if (!tempRefresh) {
+    return;
+  }
+  tempRefresh=false;
   lcd.setCursor(0, 0); //col,row
   lcd.print(F("       "));
   lcd.setCursor(0, 0); //col,row
   if (tempIN==TEMP_ERR) {
     displayTempErr();
   }else {
-    addSpaces((int)tempIN);
+    addSpacesBefore((int)tempIN);
     lcd.print((int)tempIN);
   }
   lcd.setCursor(2, 0); //col,row
@@ -621,9 +732,12 @@ void displayTemp() {
   byte radiator=1;
   for (byte i=0; i<sensorsUT.getDeviceCount(); i=i+6) {
     displayRadTemp(0, radka, sensor);
-    displayRadTemp(7, radka, ++sensor);
-    displayRadTemp(14, radka, ++sensor);
-
+    sensor+=2;
+    displayRadTemp(7, radka, sensor);
+    sensor+=2;
+    displayRadTemp(14, radka, sensor);
+    sensor+=2;
+    radka++;
   }
 
   lcd.setCursor(8, 0);
@@ -634,32 +748,39 @@ void displayTemp() {
   }
 }
 
-void displayRadTemp(byte radka, byte sloupec, byte sensor) {
-    lcd.setCursor(sloupec, radka);
-    if (tempUT[sensor]==TEMP_ERR) {
+void displayRadTemp(byte sl, byte rad, byte s) {
+    lcd.setCursor(sl, rad);
+    if (tempUT[s]==TEMP_ERR) {
       displayTempErr();
     }else {
-      addSpaces((int)tempUT[sensor]);
-      lcd.print((int)tempUT[sensor]);
+      addSpacesBefore((int)tempUT[s]);
+      lcd.print((int)tempUT[s]);
     }
-    lcd.setCursor(sloupec+2, radka);
+    lcd.setCursor(sl+2, rad);
     lcd.print(F("/"));
-    if (tempUT[++sensor]==TEMP_ERR) {
+    s++;
+    if (tempUT[s]==TEMP_ERR) {
       displayTempErr();
     }else {
-      lcd.print((int)tempUT[sensor]);    
+      lcd.print((int)tempUT[s]);    
+      addSpacesAfter((int)tempUT[s]);
     }
 }
 
 void displayTempErr() {
-  lcd.print("Er");
+  lcd.print("ER");
 }
 
-
-void addSpaces(int cislo) {
+void addSpacesBefore(int cislo) {
   //if (cislo<100 && cislo>0) lcd.print(" ");
   if (cislo<10 && cislo>0) lcd.print(" ");
-  if (cislo<=0 && cislo>-10) lcd.print(" ");
+  //if (cislo<=0 && cislo>-10) lcd.print(" ");
+}
+
+void addSpacesAfter(int cislo) {
+  //if (cislo<100 && cislo>0) lcd.print(" ");
+  if (cislo<10 && cislo>0) lcd.print(" ");
+  //if (cislo<=0 && cislo>-10) lcd.print(" ");
 }
 
 #ifdef time
@@ -746,16 +867,15 @@ void sendDataSerial() {
   //R relay status
 
   //data sended:
-  //#0;25.31#1;25.19#2;5.19#I;25.10#O;50.5#R;1$3600177622*
+  //#0;59.81#1;32.88#2;48.44#3;30.44#4;8.94#5;8.69#6;17.06#7;14.06#8;36.44#9;36.44#A;11.06#B;11.13#I;55.13#O;62.44#R;0$*
 
   if (firstMeasComplete==false) return;
 
   Serial.print("DATA:");
-  //digitalWrite(LEDPIN,HIGH);
   crc = ~0L;
   for (byte i=0;i<sensorsUT.getDeviceCount(); i++) {
     send(START_BLOCK);
-    send(i);
+    send(i, 'X');
     send(DELIMITER);
     send(tempUT[i]);
   }
@@ -871,21 +991,27 @@ void keyBoard() {
 #ifdef keypad
   //char customKey = customKeypad.getKey();
   if (key!=' '){
-    Serial.println(key);
+    //Serial.println(key);
 
-    lcd.clear();
     if (key=='1') {
       displayVar = 1;
+      lcd.clear();
     } else if (key=='2') {
       displayVar = 2;
+      lcd.clear();
     } else if (key=='3') {
       displayVar = 3;
+      lcd.clear();
     } else if (key=='4') {
       displayVar = 4;
+      lcd.clear();
     } else if (key=='5') {
       displayVar = 5;
+      lcd.clear();
     }
-
+    displayVarSub=key;
+    
+    key = ' ';
     /*
     Keyboard layout
     -----------
@@ -911,7 +1037,7 @@ void keyBoard() {
     # - 
     D - 
     */
-    key = ' ';
+
   }
 #endif
 }
@@ -1030,40 +1156,43 @@ void displayInfo() {
 void setTempON() {
   lcd.setCursor(0,3);
   lcd.print(F("Temp ON:"));
-  if (key=="*") {
+  if (displayVarSub=='*') {
     storage.tempON++;
-  } else if (key=="#") {
+  } else if (displayVarSub=='#') {
     storage.tempON--;
-  } else if (key=="D") {
+  } else if (displayVarSub=='D') {
     saveConfig();
   }
   lcd.print(storage.tempON);
+  displayVarSub=' ';
 }
 
 void setTempDiff() {
   lcd.setCursor(0,3);
   lcd.print(F("Temp diff:"));
-  if (key=="*") {
+  if (displayVarSub=='*') {
     storage.tempOFFDiff++;
-  } else if (key=="#") {
+  } else if (displayVarSub=='#') {
     storage.tempOFFDiff--;
-  } else if (key=="D") {
+  } else if (displayVarSub=='D') {
     saveConfig();
   }
   lcd.print(storage.tempOFFDiff);
+  displayVarSub=' ';
 }
 
 void setTempAlarm() {
   lcd.setCursor(0,3);
-  lcd.print(F("Temp diff:"));
-  if (key=="*") {
+  lcd.print(F("Temp alarm:"));
+  if (displayVarSub=='*') {
     storage.tempAlarm++;
-  } else if (key=="#") {
+  } else if (displayVarSub=='#') {
     storage.tempAlarm--;
-  } else if (key=="D") {
+  } else if (displayVarSub=='D') {
     saveConfig();
   }
   lcd.print(storage.tempAlarm);
+  displayVarSub=' ';
 }
 
 
