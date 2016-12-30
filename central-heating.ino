@@ -100,6 +100,10 @@ const unsigned long   pumpProtect              = 864000000;  //1000*60*60*24*10;
 const unsigned long   pumpProtectRun           = 300000;     //1000*60*5;     //in ms = 5 min
 bool                  firstMeasComplete        = false;
 bool                  tempRefresh              = false;
+unsigned long         hbDelay                  = 500;
+byte                  hb                       = 0;
+unsigned long         lastHB                   = hbDelay * -1;
+
 #define TEMP_ERR -127     
                     
 unsigned long const SERIAL_SPEED               = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
@@ -112,7 +116,7 @@ Beep peep(BUZZERPIN);
 #endif
 
 
-#define DS1307
+//#define DS1307
 #ifdef DS1307
 #include <DS1307RTC.h>
 #include <Time.h>
@@ -704,6 +708,18 @@ void saveConfig() {
 void displayTemp() {
 #ifdef time
   displayTime();
+#else
+  lcd.setCursor(19, 0); //col,row
+  if (millis() - lastHB >=hbDelay) {
+    lastHB = millis();
+    if (hb==1) {
+      hb=0;
+      lcd.print("*");
+    } else {
+      hb=1;
+      lcd.print(" ");
+    }
+  }
 #endif
   if (!tempRefresh) {
     return;
