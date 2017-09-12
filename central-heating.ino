@@ -160,22 +160,6 @@ struct StoreStruct {
   95
 };
 
-/*#include <LiquidCrystal_I2C.h>
-#define LCDADDRESS   0x27
-#define EN           2
-#define RW           1
-#define RS           0
-#define D4           4
-#define D5           5
-#define D6           6
-#define D7           7
-#define BACKLIGHT    3
-#define POL          POSITIVE
-#define LCDROWS      4
-#define LCDCOLS      20
-LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
-//LiquidCrystal_I2C lcd(LCDADDRESS,20,4);  // set the LCD
-*/
 #include <LiquidCrystal_I2C.h>
 #define LCDADDRESS   0x27
 #define LCDROWS      4
@@ -230,7 +214,7 @@ char displayVarSub=' ';
 
 
 //SW name & version
-float const   versionSW                   = 0.64;
+float const   versionSW                   = 0.65;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -311,7 +295,7 @@ void setup(void) {
 
     if (sensorsIN.getDeviceCount()==0 || sensorsOUT.getDeviceCount()==0) {
 #ifdef beep
-      peep.Delay(100,40,1,255);
+      //peep.Delay(100,40,1,255);
 #endif
       Serial.println(F("NO temperature sensor(s) DS18B20 found!!!!!!!!!"));
       lcd.setCursor(0, 1);
@@ -473,7 +457,7 @@ void loop(void) {
 
   if (tempOUT >= storage.tempAlarm) {
 #ifdef beep    
-    peep.noDelay(100,40,3,255);
+    //peep.noDelay(100,40,3,255);
 #endif
   }
   /*    if ((tempOUT || tempIN) >= storage.tempAlarm && (tempOUT || tempIN) < storage.tempAlarm+5) {
@@ -486,7 +470,7 @@ void loop(void) {
 
   display();
 #ifdef beep  
-  peep.loop();
+  //peep.loop();
 #endif  
   keyPressed();
   keyBoard();
