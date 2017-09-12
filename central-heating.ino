@@ -9,6 +9,7 @@ Petr Fory pfory@seznam.cz
 GIT - https://github.com/pfory/central-heating
 
 Version history:
+0.64 - 11.9.2017 - obsluha displeje, build IDE 1.8.3
 0.5             - i2c keyboard
 0.4 - 23.2.2016 - add RTC, prenos teploty na satelit
 0.3 - 16.1.2015
@@ -46,7 +47,7 @@ D13             - BUZZER
 --------------------------------------------------------------------------------------------------------------------------
 */
 
-//#define watchdog //enable this only on board with optiboot bootloader
+#define watchdog //enable this only on board with optiboot bootloader
 #ifdef watchdog
 #include <avr/wdt.h>
 #endif
@@ -110,13 +111,12 @@ unsigned long const SERIAL_SPEED               = 115200;  //kvuli BT modulu 9600
 unsigned long const COMM_SPEED                 = 9600;
 
 #define beep
-#ifdef beep
-#include "beep.h"
-Beep peep(BUZZERPIN);
-#endif
+// #ifdef beep
+// #include "beep.h"
+// Beep peep(BUZZERPIN);
+// #endif
 
-
-//#define DS1307
+#define DS1307
 #ifdef DS1307
 #include <DS1307RTC.h>
 #include <Time.h>
@@ -160,7 +160,7 @@ struct StoreStruct {
   95
 };
 
-#include <LiquidCrystal_I2C.h>
+/*#include <LiquidCrystal_I2C.h>
 #define LCDADDRESS   0x27
 #define EN           2
 #define RW           1
@@ -175,6 +175,13 @@ struct StoreStruct {
 #define LCDCOLS      20
 LiquidCrystal_I2C lcd(LCDADDRESS,EN,RW,RS,D4,D5,D6,D7,BACKLIGHT,POL);  // set the LCD
 //LiquidCrystal_I2C lcd(LCDADDRESS,20,4);  // set the LCD
+*/
+#include <LiquidCrystal_I2C.h>
+#define LCDADDRESS   0x27
+#define LCDROWS      4
+#define LCDCOLS      20
+LiquidCrystal_I2C lcd(LCDADDRESS,LCDCOLS,LCDROWS);  // set the LCD
+bool backLight = true;
 
 #include <SoftwareSerial.h>
 #define RX A2
@@ -223,7 +230,7 @@ char displayVarSub=' ';
 
 
 //SW name & version
-float const   versionSW                   = 0.63;
+float const   versionSW                   = 0.64;
 char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
@@ -235,10 +242,11 @@ void setup(void) {
   Serial.print(versionSWString);
   Serial.println(versionSW);
 #ifdef beep
-  peep.Delay(100,40,1,255);
+  //peep.Delay(100,40,1,255);
+  tone(BUZZERPIN, 5000, 5);
 #endif  
-  lcd.begin(LCDCOLS,LCDROWS);               // initialize the lcd 
-  lcd.setBacklight(255);
+  lcd.begin();               // initialize the lcd 
+  //lcd.setBacklight(255);
   lcd.clear();
   lcd.print(versionSWString);
   lcd.print(versionSW);
