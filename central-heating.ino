@@ -1,51 +1,11 @@
 /*
 --------------------------------------------------------------------------------------------------------------------------
-
-               CENTRAL HEATING - control system for central heating
-
-Petr Fory pfory@seznam.cz
-
+CENTRAL HEATING - control system for central heating
 Petr Fory pfory@seznam.cz
 GIT - https://github.com/pfory/central-heating
-
-Version history:
-0.64 - 11.9.2017 - obsluha displeje, build IDE 1.8.3
-0.5             - i2c keyboard
-0.4 - 23.2.2016 - add RTC, prenos teploty na satelit
-0.3 - 16.1.2015
-
---------------------------------------------------------------------------------------------------------------------------
-HW
-Pro Mini 328
-I2C display
-1 Relays module
-DALLAS
-keyboard
-
-Pro Mini 328 Layout
-------------------------------------------
-A0              - 
-A1              - 
-A2              - RX from CommUnit
-A3              - TX to CommUnit
-A4              - I2C display SDA 0x27, I2C Central heating unit 0x02, keypad 0x20, 
-A5              - I2C display SCL 0x27, I2C Central heating unit 0x02, keypad 0x20
-D0              - Rx
-D1              - Tx
-D2              - DALLAS
-D3              - 
-D4              - DALLAS
-D5              - DALLAS
-D6              - RELAY
-D7              - 
-D8              - LED
-D9              - 
-D10             - 
-D11             - 
-D12             - 
-D13             - BUZZER
---------------------------------------------------------------------------------------------------------------------------
 */
+
+#include "Configuration.h"
 
 #define watchdog //enable this only on board with optiboot bootloader
 #ifdef watchdog
@@ -59,19 +19,6 @@ D13             - BUZZER
 #include <EEPROM.h>
 #include <avr/wdt.h>
 
-//wiring
-#define ONE_WIRE_BUS_IN                     2
-#define ONE_WIRE_BUS_OUT                    4
-#define ONE_WIRE_BUS_UT                     5
-#define RELAYPIN                            6
-#define LEDPIN                              8
-#define BUZZERPIN                           13
-
-#define IN                                  0
-#define OUT                                 1
-//#define RELAY                               100
-//#define RELAYTEMP                           101
-
 // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 OneWire oneWireOUT(ONE_WIRE_BUS_OUT);
 OneWire oneWireIN(ONE_WIRE_BUS_IN);
@@ -84,7 +31,6 @@ DallasTemperature sensorsUT(&oneWireUT);
 
 DeviceAddress inThermometer, outThermometer;
 DeviceAddress utT[15];
-#define TEMPERATURE_PRECISION 12
 
 const unsigned long   measDelay                = 10000; //in ms
 unsigned long         lastMeas                 = measDelay * -1;
@@ -105,11 +51,8 @@ unsigned long         hbDelay                  = 500;
 byte                  hb                       = 0;
 unsigned long         lastHB                   = hbDelay * -1;
 
-#define TEMP_ERR -127     
-                    
-unsigned long const SERIAL_SPEED               = 115200;  //kvuli BT modulu 9600 jinak muze byt vice
-unsigned long const COMM_SPEED                 = 9600;
 
+                    
 #define beep
 // #ifdef beep
 // #include "beep.h"
@@ -129,14 +72,14 @@ unsigned long const COMM_SPEED                 = 9600;
 #include <Time.h>
 //#include <Streaming.h>        
 #include <Time.h>             
-bool parse=false;
-bool config=false;
+//bool parse=false;
+//bool config=false;
 tmElements_t    tm;
-bool isTime = true;
+//bool isTime = true;
 #endif
 
-#define CONFIG_START 0
-#define CONFIG_VERSION "v08"
+
+
 
 struct StoreStruct {
   // This is for mere detection if they are your settings
@@ -161,15 +104,10 @@ struct StoreStruct {
 };
 
 #include <LiquidCrystal_I2C.h>
-#define LCDADDRESS   0x27
-#define LCDROWS      4
-#define LCDCOLS      20
 LiquidCrystal_I2C lcd(LCDADDRESS,LCDCOLS,LCDROWS);  // set the LCD
 bool backLight = true;
 
 #include <SoftwareSerial.h>
-#define RX A2
-#define TX A3
 SoftwareSerial mySerial(RX, TX);
 #define serial
 
@@ -181,50 +119,45 @@ const PROGMEM uint32_t crc_table[16] = {
     0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
     0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
 };
-#define START_BLOCK       '#'
-#define DELIMITER         ';'
-#define END_BLOCK         '$'
-#define END_TRANSMITION   '*'
 
-#define keypad
-#ifdef keypad
-int address                               = 0x20;
-uint8_t data;
-int error;
-uint8_t pin                               = 0;
-char key                                  = ' ';
-char keyOld                               = ' ';
-unsigned int repeatAfterMs                = 300;
-//unsigned int repeatCharSec                = 10;
-unsigned long lastKeyPressed              = 0;
 
-//define the symbols on the buttons of the keypads
-const byte ROWS                           = 4; //four rows
-const byte COLS                           = 4; //four columns
-char hexaKeys[ROWS][COLS]                 = {
-                                            {'*','7','4','1'},
-                                            {'0','8','5','2'},
-                                            {'#','9','6','3'},
-                                            {'D','C','B','A'}
+// #define keypad
+// #ifdef keypad
+#include <Keypad_I2C.h>
+#include <Keypad.h>          // GDY120705
+#include <Wire.h>
+
+
+const byte ROWS = 4; //four rows
+const byte COLS = 4; //three columns
+char keys[ROWS][COLS]                 = {
+                                            {'1','2','3','A'},
+                                            {'4','5','6','B'},
+                                            {'7','8','9','C'},
+                                            {'*','0','#','D'}
 };
+byte rowPins[ROWS] = {7,6,5,4}; //connect to the row pinouts of the keypad
+byte colPins[COLS] = {3,2,1,0}; //connect to the column pinouts of the keypad
+
+//Keypad_I2C keypad = Keypad_I2C( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR );
+Keypad_I2C keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS, I2CADDR); 
+// #endif
+
 byte displayVar=1;
 char displayVarSub=' ';
-#endif
 
-
-
-//SW name & version
-float const   versionSW                   = 0.65;
-char  const   versionSWString[]           = "Central heat v"; 
 
 const byte STATUS_AFTER_BOOT  = 9;
 
 /////////////////////////////////////////////   S  E  T  U  P   ////////////////////////////////////
 void setup(void) {
   Wire.begin();
+#ifdef serial
   Serial.begin(SERIAL_SPEED);
-  Serial.print(versionSWString);
-  Serial.println(versionSW);
+  Serial.print(F(SW_NAME));
+  Serial.print(F(" "));
+  Serial.println(F(VERSION));
+#endif
 #ifdef beep
   //peep.Delay(100,40,1,255);
   tone(BUZZERPIN, 5000, 5);
@@ -232,9 +165,12 @@ void setup(void) {
   lcd.begin();               // initialize the lcd 
   //lcd.setBacklight(255);
   lcd.clear();
-  lcd.print(versionSWString);
-  lcd.print(versionSW);
-  mySerial.begin(COMM_SPEED);
+  lcd.print(F(SW_NAME));
+  lcd.print(F(" "));
+  lcd.print(F(VERSION));
+  mySerial.begin(mySERIAL_SPEED);
+  
+  keypad.begin();
   
 #ifdef DS1307
   if (RTC.read(tm)) {
@@ -472,7 +408,7 @@ void loop(void) {
 #ifdef beep  
   //peep.loop();
 #endif  
-  keyPressed();
+  //keyPressed();
   keyBoard();
   
 #ifdef time
@@ -996,11 +932,10 @@ void send(float s) {
 }
 
 void keyBoard() {
-#ifdef keypad
-  //char customKey = customKeypad.getKey();
-  if (key!=' '){
-    //Serial.println(key);
-
+  //#ifdef keypad
+  char key = keypad.getKey();
+  if (key!=NO_KEY) {
+    lcd.clear();
     if (key=='1') {
       displayVar = 1;
       lcd.clear();
@@ -1016,10 +951,12 @@ void keyBoard() {
     } else if (key=='5') {
       displayVar = 5;
       lcd.clear();
+    } else if (key=='6') {
+      displayVar = 60;
+      lcd.clear();
     }
     displayVarSub=key;
     
-    key = ' ';
     /*
     Keyboard layout
     -----------
@@ -1045,32 +982,31 @@ void keyBoard() {
     # - 
     D - 
     */
-
+    key = ' ';
   }
-#endif
 }
 
-#ifdef keypad
-uint8_t read8() {
-  Wire.beginTransmission(address);
-  Wire.requestFrom(address, 1);
-  data = Wire.read();
-  error = Wire.endTransmission();
-  //Serial.println(error);
-  return data;
-}
+// #ifdef keypad
+// uint8_t read8() {
+  // Wire.beginTransmission(address);
+  // Wire.requestFrom(address, 1);
+  // data = Wire.read();
+  // error = Wire.endTransmission();
+  // //Serial.println(error);
+  // return data;
+// }
 /*
 uint8_t read(uint8_t pin) {
   read8();
   return (data & (1<<pin)) > 0;
 }
 */
-void write8(uint8_t value) {
-  Wire.beginTransmission(address);
-  data = value;
-  Wire.write(data);
-  error = Wire.endTransmission();
-}
+// void write8(uint8_t value) {
+  // Wire.beginTransmission(address);
+  // data = value;
+  // Wire.write(data);
+  // error = Wire.endTransmission();
+// }
 /*
 void write(uint8_t pin, uint8_t value) {
   read8();
@@ -1082,52 +1018,52 @@ void write(uint8_t pin, uint8_t value) {
   write8(data); 
 }
 */
-void keyPressed() {
-  byte row=0;
-  byte col=255;
-  byte b=127;
-  if (millis() - lastKeyPressed > repeatAfterMs) {
-    keyOld = 0;
-  }
-  //write8(1);
-  //Serial.println(read8());
+// void keyPressed() {
+  // byte row=0;
+  // byte col=255;
+  // byte b=127;
+  // if (millis() - lastKeyPressed > repeatAfterMs) {
+    // keyOld = 0;
+  // }
+  // //write8(1);
+  // //Serial.println(read8());
   
-  for (byte i=0; i<4; i++) {
-    row=i;
-    b=~(255&(1<<i+4));
-    //Serial.println(b);
-    write8(b);
-    //Serial.println(read8());
-    col = colTest(read8(), b);
-    //Serial.println(col);
-    if (col<255) {
-      key = hexaKeys[row][col];
-      //Serial.print(key);
-      if (key!=keyOld) {
-        lastKeyPressed = millis();
-        keyOld=hexaKeys[row][col];
-        /*Serial.print(row);
-        Serial.print(",");
-        Serial.print(col);
-        Serial.print("=");
-        Serial.println((char)key);
-        */
-      } else {
-        key = ' ';
-      }
-      break;
-    }
-  }
-}
+  // for (byte i=0; i<4; i++) {
+    // row=i;
+    // b=~(255&(1<<i+4));
+    // //Serial.println(b);
+    // write8(b);
+    // //Serial.println(read8());
+    // col = colTest(read8(), b);
+    // //Serial.println(col);
+    // if (col<255) {
+      // key = hexaKeys[row][col];
+      // //Serial.print(key);
+      // if (key!=keyOld) {
+        // lastKeyPressed = millis();
+        // keyOld=hexaKeys[row][col];
+        // /*Serial.print(row);
+        // Serial.print(",");
+        // Serial.print(col);
+        // Serial.print("=");
+        // Serial.println((char)key);
+        // */
+      // } else {
+        // key = ' ';
+      // }
+      // break;
+    // }
+  // }
+// }
 
-byte colTest(byte key, byte b) {
-  if (key==b-8) return 0;
-  else if (key==b-4) return 1;
-  else if (key==b-2) return 2;
-  else if (key==b-1) return 3;
-  else return 255;
-}
-#endif
+// byte colTest(byte key, byte b) {
+  // if (key==b-8) return 0;
+  // else if (key==b-4) return 1;
+  // else if (key==b-2) return 2;
+  // else if (key==b-1) return 3;
+  // else return 255;
+// }
+// #endif
 
 void display() {
   if (displayVar==1) {
@@ -1140,13 +1076,16 @@ void display() {
     setTempDiff();
   } else if (displayVar==5) {
     setTempAlarm();
+  } else if (displayVar>=60 && displayVar<=62) {
+    setClock(displayVar);
   }
 }
 
 void displayInfo() {
   lcd.setCursor(0,0);
-  lcd.print(versionSWString);
-  lcd.print(versionSW);
+  lcd.print(F(SW_NAME));
+  lcd.print(F(" "));
+  lcd.print(F(VERSION));
 
   lcd.setCursor(0,1);
   lcd.print(F("Temp ON:"));
@@ -1162,7 +1101,7 @@ void displayInfo() {
 }
 
 void setTempON() {
-  lcd.setCursor(0,3);
+  showHelpKey();
   lcd.print(F("Temp ON:"));
   if (displayVarSub=='*') {
     storage.tempON++;
@@ -1176,7 +1115,7 @@ void setTempON() {
 }
 
 void setTempDiff() {
-  lcd.setCursor(0,3);
+  showHelpKey();
   lcd.print(F("Temp diff:"));
   if (displayVarSub=='*') {
     storage.tempOFFDiff++;
@@ -1190,7 +1129,7 @@ void setTempDiff() {
 }
 
 void setTempAlarm() {
-  lcd.setCursor(0,3);
+  showHelpKey();
   lcd.print(F("Temp alarm:"));
   if (displayVarSub=='*') {
     storage.tempAlarm++;
@@ -1203,6 +1142,84 @@ void setTempAlarm() {
   displayVarSub=' ';
 }
 
+void controlRange(uint8_t *pTime, uint8_t min, uint8_t max) {
+  if (pTime<min) {
+    pTime=min;
+  }
+  if (pTime>max) {
+    pTime=max;
+  }
+  
+}
+
+void setClock(byte typ) {
+  if (typ==60) { //hour
+    showHelpKey1();
+    lcd.print(F("Hour:"));
+    if (displayVarSub=='*') {
+      tm.Hour++;
+      controlRange(&tm.Hour, 0, 23);
+    } else if (displayVarSub=='#') {
+      tm.Hour--;
+      controlRange(&tm.Hour, 0, 23);
+    } else if (displayVarSub=='D') {
+      displayVar=61;
+    }
+    displayVarSub=' ';
+  } else if (typ==61) { //min
+    showHelpKey1();
+    lcd.print(F("Min:"));
+    if (displayVarSub=='*') {
+      tm.Minute++;
+      controlRange(&tm.Minute, 0, 59);
+    } else if (displayVarSub=='#') {
+      tm.Minute--;
+      controlRange(&tm.Minute, 0, 59);
+    } else if (displayVarSub=='D') {
+      displayVar=62;
+    }
+    displayVarSub=' ';
+  } else if (typ==62) { //sec
+    showHelpKey();
+    lcd.print(F("Sec:"));
+    if (displayVarSub=='*') {
+      tm.Second++;
+      controlRange(&tm.Second, 0, 59);
+    } else if (displayVarSub=='#') {
+      tm.Second--;
+      controlRange(&tm.Second, 0, 59);
+    } else if (displayVarSub=='D') {
+      RTC.write(tm);
+      displayVar=1;
+    }
+    lcd2digits(tm.Hour);
+    lcd.write(':');
+    lcd2digits(tm.Minute);
+    lcd.write(':');
+    lcd2digits(tm.Second);
+    displayVarSub=' ';
+  }
+}
+
+void showHelpKey() {
+  lcd.setCursor(0,0);
+  lcd.print(F("key * UP "));
+  lcd.setCursor(0,1);
+  lcd.print(F("key # DOWN "));
+  lcd.setCursor(0,2);
+  lcd.print(F("key D SAVE "));
+  lcd.setCursor(0,3);
+}
+
+void showHelpKey1() {
+  lcd.setCursor(0,0);
+  lcd.print(F("key * UP "));
+  lcd.setCursor(0,1);
+  lcd.print(F("key # DOWN "));
+  lcd.setCursor(0,2);
+  lcd.print(F("key D NEXT "));
+  lcd.setCursor(0,3);
+}
 
 // function to print a device address
 void printAddress(DeviceAddress deviceAddress)
