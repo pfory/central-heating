@@ -55,10 +55,6 @@ D13             - BUZZER
 #define SERIAL_SPEED    57600
 #define mySERIAL_SPEED  9600
 
-#define LCDADDRESS   0x27
-#define LCDROWS      4
-#define LCDCOLS      20
-
 //pins for softwareserial
 #define RX A2
 #define TX A3
@@ -91,6 +87,8 @@ D13             - BUZZER
 #define TEMPERATURE_PRECISION 12
 
 //keypad i2c address
-#define I2CADDR                             0x20
+#define I2CADDR       0x20
+#define PRINT_SPACE           lcd.print(F(" "));
+
 
 #endif

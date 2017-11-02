@@ -98,8 +98,8 @@ struct StoreStruct {
   // The default module 0
   0,
   0, // off
-  65,
-  2,
+  60,
+  5,
   95
 };
 
@@ -121,8 +121,6 @@ const PROGMEM uint32_t crc_table[16] = {
 };
 
 
-// #define keypad
-// #ifdef keypad
 #include <Keypad_I2C.h>
 #include <Keypad.h>          // GDY120705
 #include <Wire.h>
@@ -151,23 +149,31 @@ const byte STATUS_AFTER_BOOT  = 9;
 
 /////////////////////////////////////////////   S  E  T  U  P   ////////////////////////////////////
 void setup(void) {
-  Wire.begin();
 #ifdef serial
   Serial.begin(SERIAL_SPEED);
   Serial.print(F(SW_NAME));
   Serial.print(F(" "));
   Serial.println(F(VERSION));
 #endif
+
+  // storage.tempON = 60;
+  // storage.tempOFFDiff = 5;
+  // saveConfig();
+
+#ifdef watchdog
+  wdt_enable(WDTO_8S);
+#endif
+
 #ifdef beep
   //peep.Delay(100,40,1,255);
   tone(BUZZERPIN, 5000, 5);
 #endif  
   lcd.begin();               // initialize the lcd 
-  //lcd.setBacklight(255);
-  lcd.clear();
-  lcd.print(F(SW_NAME));
-  lcd.print(F(" "));
-  lcd.print(F(VERSION));
+  lcd.home();
+  lcd.print(SW_NAME);
+  PRINT_SPACE
+  lcd.print(VERSION);
+  
   mySerial.begin(mySERIAL_SPEED);
   
   keypad.begin();
@@ -333,10 +339,6 @@ sprintf(adresse_formatee_hexa,
   delay(1000);
   lcd.clear();
 
-#ifdef watchdog
-  wdt_enable(WDTO_8S);
-#endif
-  
   lastSend=0;
   //lastMeas=-measDelay;
   Serial.println(F("Setup end."));
@@ -408,7 +410,6 @@ void loop(void) {
 #ifdef beep  
   //peep.loop();
 #endif  
-  //keyPressed();
   keyBoard();
   
 #ifdef time
@@ -743,7 +744,7 @@ void print2digits(int number) {
   Serial.print(number);
 }
 
-
+#ifdef time
 void displayTime() {
   lcd.setCursor(12, 0); //col,row
   if (RTC.read(tm)) {
@@ -756,6 +757,7 @@ void displayTime() {
     lcd.write('        ');
   }
 }
+#endif
 
 //zabranuje zatuhnuti cerpadla v lete
 void testPumpProtect() {
@@ -932,9 +934,9 @@ void send(float s) {
 }
 
 void keyBoard() {
-  //#ifdef keypad
   char key = keypad.getKey();
   if (key!=NO_KEY) {
+    Serial.println(key);
     lcd.clear();
     if (key=='1') {
       displayVar = 1;
@@ -986,85 +988,6 @@ void keyBoard() {
   }
 }
 
-// #ifdef keypad
-// uint8_t read8() {
-  // Wire.beginTransmission(address);
-  // Wire.requestFrom(address, 1);
-  // data = Wire.read();
-  // error = Wire.endTransmission();
-  // //Serial.println(error);
-  // return data;
-// }
-/*
-uint8_t read(uint8_t pin) {
-  read8();
-  return (data & (1<<pin)) > 0;
-}
-*/
-// void write8(uint8_t value) {
-  // Wire.beginTransmission(address);
-  // data = value;
-  // Wire.write(data);
-  // error = Wire.endTransmission();
-// }
-/*
-void write(uint8_t pin, uint8_t value) {
-  read8();
-  if (value == LOW) {
-    data &= ~(1<<pin);
-  }else{
-    data |= (1<<pin);
-  }
-  write8(data); 
-}
-*/
-// void keyPressed() {
-  // byte row=0;
-  // byte col=255;
-  // byte b=127;
-  // if (millis() - lastKeyPressed > repeatAfterMs) {
-    // keyOld = 0;
-  // }
-  // //write8(1);
-  // //Serial.println(read8());
-  
-  // for (byte i=0; i<4; i++) {
-    // row=i;
-    // b=~(255&(1<<i+4));
-    // //Serial.println(b);
-    // write8(b);
-    // //Serial.println(read8());
-    // col = colTest(read8(), b);
-    // //Serial.println(col);
-    // if (col<255) {
-      // key = hexaKeys[row][col];
-      // //Serial.print(key);
-      // if (key!=keyOld) {
-        // lastKeyPressed = millis();
-        // keyOld=hexaKeys[row][col];
-        // /*Serial.print(row);
-        // Serial.print(",");
-        // Serial.print(col);
-        // Serial.print("=");
-        // Serial.println((char)key);
-        // */
-      // } else {
-        // key = ' ';
-      // }
-      // break;
-    // }
-  // }
-// }
-
-// byte colTest(byte key, byte b) {
-  // if (key==b-8) return 0;
-  // else if (key==b-4) return 1;
-  // else if (key==b-2) return 2;
-  // else if (key==b-1) return 3;
-  // else return 255;
-// }
-// #endif
-
 void display() {
   if (displayVar==1) {
     displayTemp();
@@ -1077,7 +1000,9 @@ void display() {
   } else if (displayVar==5) {
     setTempAlarm();
   } else if (displayVar>=60 && displayVar<=62) {
+#ifdef time   
     setClock(displayVar);
+#endif
   }
 }
 
@@ -1143,15 +1068,16 @@ void setTempAlarm() {
 }
 
 void controlRange(uint8_t *pTime, uint8_t min, uint8_t max) {
-  if (pTime<min) {
-    pTime=min;
-  }
-  if (pTime>max) {
-    pTime=max;
-  }
+  // if (&pTime<min) {
+    // pTime=min;
+  // }
+  // if (&pTime>max) {
+    // pTime=max;
+  // }
   
 }
 
+#ifdef time
 void setClock(byte typ) {
   if (typ==60) { //hour
     showHelpKey1();
@@ -1200,6 +1126,7 @@ void setClock(byte typ) {
     displayVarSub=' ';
   }
 }
+#endif
 
 void showHelpKey() {
   lcd.setCursor(0,0);
