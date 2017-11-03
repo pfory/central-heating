@@ -1068,12 +1068,12 @@ void setTempAlarm() {
 }
 
 void controlRange(uint8_t *pTime, uint8_t min, uint8_t max) {
-  // if (&pTime<min) {
-    // pTime=min;
-  // }
-  // if (&pTime>max) {
-    // pTime=max;
-  // }
+   if (*pTime<min) {
+     *pTime=min;
+   }
+   if (*pTime>max) {
+     *pTime=max;
+   }
   
 }
 
