@@ -25,10 +25,11 @@ void setup() {
 
  
   digitalWrite(13, LOW);
+  lastMillis = 0;
 }
 
 void loop() {
-  if (millis()-lastMillis>=100) {
+  if (millis()-lastMillis>=10) {
     lastMillis=millis();
     sevseg.setNumber(temperature, 1);
     temperature+=0.1f;
