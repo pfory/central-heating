@@ -3,20 +3,45 @@
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 #include <WiFiManager.h> 
+<<<<<<< HEAD
 
 const char *ssid = "Datlovo";
 const char *password = "Nu6kMABmseYwbCoJ7LyG";
+=======
+>>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
 
 #define AIO_SERVER      "192.168.1.56"
 #define AIO_SERVERPORT  1883
 #define AIO_USERNAME    "datel"
 #define AIO_KEY         "hanka12"
 
+#define verbose
+#ifdef verbose
+ #define DEBUG_PRINT(x)         Serial.print (x)
+ #define DEBUG_PRINTDEC(x)      Serial.print (x, DEC)
+ #define DEBUG_PRINTLN(x)       Serial.println (x)
+ #define DEBUG_PRINTF(x, y)     Serial.printf (x, y)
+ #define PORTSPEED 115200
+#else
+ #define DEBUG_PRINT(x)
+ #define DEBUG_PRINTDEC(x)
+ #define DEBUG_PRINTLN(x)
+ #define DEBUG_PRINTF(x, y)
+#endif 
+
 WiFiClient client;
 WiFiManager wifiManager;
+<<<<<<< HEAD
+=======
 
-byte heartBeat                    = 12;
-String received                   = "";
+uint32_t heartBeat                    = 12;
+String received                       = "";
+unsigned long milisLastRunMinOld      = 0;
+>>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
+
+IPAddress _ip           = IPAddress(192, 168, 1, 109);
+IPAddress _gw           = IPAddress(192, 168, 1, 1);
+IPAddress _sn           = IPAddress(255, 255, 255, 0);
 
 #define pinLed                    2
 
@@ -48,7 +73,7 @@ Adafruit_MQTT_Publish t11                 = Adafruit_MQTT_Publish(&mqtt, "/home/
 
 void MQTT_connect(void);
 
-float versionSW                  = 0.9;
+float versionSW                  = 0.91;
 String versionSWString            = "Central Heating v";
 
 void setup() {
@@ -56,15 +81,40 @@ void setup() {
   Serial.print(versionSWString);
   Serial.print(versionSW);
   
+<<<<<<< HEAD
   //WiFi.begin(ssid, password);
   //wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
   //WiFi.begin(ssid, password);
   if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
     Serial.println("failed to connect, we should reset as see if it connects");
+=======
+  DEBUG_PRINTLN(ESP.getResetReason());
+  if (ESP.getResetReason()=="Software/System restart") {
+    heartBeat=1;
+  } else if (ESP.getResetReason()=="Power on") {
+    heartBeat=2;
+  } else if (ESP.getResetReason()=="External System") {
+    heartBeat=3;
+  } else if (ESP.getResetReason()=="Hardware Watchdog") {
+    heartBeat=4;
+  } else if (ESP.getResetReason()=="Exception") {
+    heartBeat=5;
+  } else if (ESP.getResetReason()=="Software Watchdog") {
+    heartBeat=6;
+  } else if (ESP.getResetReason()=="Deep-Sleep Wake") {
+    heartBeat=7;
+  }
+  
+  //WiFi.config(ip); 
+  wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
+  if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
+    DEBUG_PRINTLN("failed to connect, we should reset as see if it connects");
+>>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
     delay(3000);
     ESP.reset();
     delay(5000);
   }
+<<<<<<< HEAD
 
 	// Wait for connection
 	while (WiFi.status() != WL_CONNECTED) {
@@ -72,9 +122,9 @@ void setup() {
 		Serial.print(".");
 	}
 
+=======
+>>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
 	Serial.println("");
-	Serial.print("Connected to ");
-	Serial.println(ssid);
 	Serial.print("IP address: ");
 	Serial.println(WiFi.localIP());
   pinMode(pinLed,OUTPUT); 
@@ -251,19 +301,21 @@ void loop() {
       } else {
         Serial.println("OK!");
       }
-      if (! version.publish(versionSW)) {
-        Serial.println("failed");
-      } else {
-        Serial.println("OK!");
+      
+      if (millis() - milisLastRunMinOld > 60000) {
+        if (! version.publish(versionSW)) {
+          Serial.println("failed");
+        } else {
+          Serial.println("OK!");
+        }
+        if (! hb.publish(heartBeat)) {
+          Serial.println("failed");
+        } else {
+          Serial.println("OK!");
+        }
+        heartBeat++;
       }
-      if (! hb.publish(heartBeat++)) {
-        Serial.println("failed");
-      } else {
-        Serial.println("OK!");
-      }
-      if (heartBeat>1) {
-        heartBeat=0;
-      }
+      
       digitalWrite(pinLed,HIGH);
     } else {
       emptyData=true;
