@@ -3,12 +3,6 @@
 #include "Adafruit_MQTT.h"
 #include "Adafruit_MQTT_Client.h"
 #include <WiFiManager.h> 
-<<<<<<< HEAD
-
-const char *ssid = "Datlovo";
-const char *password = "Nu6kMABmseYwbCoJ7LyG";
-=======
->>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
 
 #define AIO_SERVER      "192.168.1.56"
 #define AIO_SERVERPORT  1883
@@ -31,13 +25,10 @@ const char *password = "Nu6kMABmseYwbCoJ7LyG";
 
 WiFiClient client;
 WiFiManager wifiManager;
-<<<<<<< HEAD
-=======
 
 uint32_t heartBeat                    = 12;
 String received                       = "";
 unsigned long milisLastRunMinOld      = 0;
->>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
 
 IPAddress _ip           = IPAddress(192, 168, 1, 109);
 IPAddress _gw           = IPAddress(192, 168, 1, 1);
@@ -81,13 +72,6 @@ void setup() {
   Serial.print(versionSWString);
   Serial.print(versionSW);
   
-<<<<<<< HEAD
-  //WiFi.begin(ssid, password);
-  //wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
-  //WiFi.begin(ssid, password);
-  if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
-    Serial.println("failed to connect, we should reset as see if it connects");
-=======
   DEBUG_PRINTLN(ESP.getResetReason());
   if (ESP.getResetReason()=="Software/System restart") {
     heartBeat=1;
@@ -109,21 +93,10 @@ void setup() {
   wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
   if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
     DEBUG_PRINTLN("failed to connect, we should reset as see if it connects");
->>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
     delay(3000);
     ESP.reset();
     delay(5000);
   }
-<<<<<<< HEAD
-
-	// Wait for connection
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		Serial.print(".");
-	}
-
-=======
->>>>>>> 22f600f5a3d1bd8163f6f62c8bbf9ddd924d4edc
 	Serial.println("");
 	Serial.print("IP address: ");
 	Serial.println(WiFi.localIP());
