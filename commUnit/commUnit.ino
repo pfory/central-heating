@@ -18,13 +18,14 @@
  #define DEBUG_PRINTDEC(x)      Serial.print (x, DEC)
  #define DEBUG_PRINTLN(x)       Serial.println (x)
  #define DEBUG_PRINTF(x, y)     Serial.printf (x, y)
- #define PORTSPEED 115200
 #else
  #define DEBUG_PRINT(x)
  #define DEBUG_PRINTDEC(x)
  #define DEBUG_PRINTLN(x)
  #define DEBUG_PRINTF(x, y)
 #endif 
+
+#define PORTSPEED 9600
 
 //for LED status
 #include <Ticker.h>
@@ -40,15 +41,13 @@ void tick()
 WiFiClient client;
 WiFiManager wifiManager;
 
-uint32_t heartBeat                    = 12;
+uint32_t heartBeat                    = 0;
 String received                       = "";
 unsigned long milisLastRunMinOld      = 0;
 
 IPAddress _ip           = IPAddress(192, 168, 1, 109);
 IPAddress _gw           = IPAddress(192, 168, 1, 1);
 IPAddress _sn           = IPAddress(255, 255, 255, 0);
-
-#define pinLed                    2
 
 Adafruit_MQTT_Client mqtt(&client, AIO_SERVER, AIO_SERVERPORT, AIO_USERNAME, AIO_KEY);
 
@@ -74,8 +73,6 @@ Adafruit_MQTT_Publish t9                  = Adafruit_MQTT_Publish(&mqtt, "/home/
 Adafruit_MQTT_Publish t10                 = Adafruit_MQTT_Publish(&mqtt, "/home/Corridor/esp06/t10");
 Adafruit_MQTT_Publish t11                 = Adafruit_MQTT_Publish(&mqtt, "/home/Corridor/esp06/t11");
 
-#define SERIALSPEED 9600
-
 void MQTT_connect(void);
 
 //gets called when WiFiManager enters configuration mode
@@ -92,9 +89,7 @@ float versionSW                  = 0.92;
 String versionSWString            = "Central Heating v";
 
 void setup() {
-#ifdef verbose  
-  Serial.begin(SERIALSPEED);
-#endif
+  Serial.begin(PORTSPEED);
   DEBUG_PRINT(versionSWString);
   DEBUG_PRINT(versionSW);
   //set led pin as output
@@ -126,7 +121,7 @@ void setup() {
   
   //WiFi.config(ip); 
   wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
-  if (!wifiManager.autoConnect("AutoConnectAP", "password")) {
+  if (!wifiManager.autoConnect("Central", "password")) {
     DEBUG_PRINTLN("failed to connect, we should reset as see if it connects");
     delay(3000);
     ESP.reset();
@@ -134,7 +129,7 @@ void setup() {
   }
   ticker.detach();
   //keep LED on
-  digitalWrite(BUILTIN_LED, LOW);
+  digitalWrite(BUILTIN_LED, HIGH);
 }
 
 void loop() {
@@ -159,7 +154,7 @@ void loop() {
     //received="#0;59.81#1;32.88#2;48.44#3;30.44#4;8.94#5;8.69#6;17.06#7;14.06#8;36.44#9;36.44#A;11.06#B;11.13#I;55.13#O;62.44#R;0$*";
     received.trim();
     if (received!="") {
-      digitalWrite(pinLed,LOW);
+      digitalWrite(BUILTIN_LED,LOW);
       byte i=1;
       while (i<=15) {
         String val = getValue(received, '#', i);
@@ -320,7 +315,7 @@ void loop() {
         heartBeat++;
       }
       
-      digitalWrite(pinLed,HIGH);
+      digitalWrite(BUILTIN_LED,HIGH);
     } else {
       emptyData=true;
       DEBUG_PRINTLN("empty data");
