@@ -1,3 +1,6 @@
+//ESP8266-01
+//kompilovat jako Generic ESP8266 Module
+
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include "Adafruit_MQTT.h"
@@ -22,6 +25,17 @@
  #define DEBUG_PRINTLN(x)
  #define DEBUG_PRINTF(x, y)
 #endif 
+
+//for LED status
+#include <Ticker.h>
+Ticker ticker;
+
+void tick()
+{
+  //toggle state
+  int state = digitalRead(BUILTIN_LED);  // get the current state of GPIO1 pin
+  digitalWrite(BUILTIN_LED, !state);     // set pin to the opposite state
+}
 
 WiFiClient client;
 WiFiManager wifiManager;
@@ -64,13 +78,29 @@ Adafruit_MQTT_Publish t11                 = Adafruit_MQTT_Publish(&mqtt, "/home/
 
 void MQTT_connect(void);
 
-float versionSW                  = 0.91;
+//gets called when WiFiManager enters configuration mode
+void configModeCallback (WiFiManager *myWiFiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  //if you used auto generated SSID, print it
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+  //entered config mode, make led toggle faster
+  ticker.attach(0.2, tick);
+}
+
+float versionSW                  = 0.92;
 String versionSWString            = "Central Heating v";
 
 void setup() {
+#ifdef verbose  
   Serial.begin(SERIALSPEED);
-  Serial.print(versionSWString);
-  Serial.print(versionSW);
+#endif
+  DEBUG_PRINT(versionSWString);
+  DEBUG_PRINT(versionSW);
+  //set led pin as output
+  pinMode(BUILTIN_LED, OUTPUT);
+  // start ticker with 0.5 because we start in AP mode and try to connect
+  ticker.attach(0.6, tick);
   
   DEBUG_PRINTLN(ESP.getResetReason());
   if (ESP.getResetReason()=="Software/System restart") {
@@ -88,6 +118,11 @@ void setup() {
   } else if (ESP.getResetReason()=="Deep-Sleep Wake") {
     heartBeat=7;
   }
+
+  wifiManager.setConnectTimeout(600); //5min
+
+  //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+  wifiManager.setAPCallback(configModeCallback);
   
   //WiFi.config(ip); 
   wifiManager.setSTAStaticIPConfig(_ip, _gw, _sn);
@@ -97,13 +132,9 @@ void setup() {
     ESP.reset();
     delay(5000);
   }
-	Serial.println("");
-	Serial.print("IP address: ");
-	Serial.println(WiFi.localIP());
-  pinMode(pinLed,OUTPUT); 
-  digitalWrite(pinLed,LOW);
-  delay(1000);
-  digitalWrite(pinLed,HIGH);
+  ticker.detach();
+  //keep LED on
+  digitalWrite(BUILTIN_LED, LOW);
 }
 
 void loop() {
@@ -112,7 +143,7 @@ void loop() {
   // function definition further below.
   if (Serial.available()>0) { 
     received=Serial.readStringUntil('*');
-    Serial.println(received);
+    DEBUG_PRINTLN(received);
   // }
 
   // if (millis() - lastSendTime >= sendTimeDelay) {
@@ -123,7 +154,7 @@ void loop() {
     int pumpStatus=0;
     
     bool emptyData=false;
-    Serial.println(received);
+    DEBUG_PRINTLN(received);
     
     //received="#0;59.81#1;32.88#2;48.44#3;30.44#4;8.94#5;8.69#6;17.06#7;14.06#8;36.44#9;36.44#A;11.06#B;11.13#I;55.13#O;62.44#R;0$*";
     received.trim();
@@ -134,157 +165,157 @@ void loop() {
         String val = getValue(received, '#', i);
         if (val.substring(0,1)=="0") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="1") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="2") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="3") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="4") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="5") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="6") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="7") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="8") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="9") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="A") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="B") {
           temp[i-1]=val.substring(2).toFloat(); 
-          Serial.println(temp[i-1]);
+          DEBUG_PRINTLN(temp[i-1]);
         }
         if (val.substring(0,1)=="I") {
           tempINKamna=val.substring(2).toFloat(); 
-          Serial.println(tempINKamna);
+          DEBUG_PRINTLN(tempINKamna);
         }
         if (val.substring(0,1)=="O") {
           tempOUTKamna=val.substring(2).toFloat(); 
-          Serial.println(tempOUTKamna);
+          DEBUG_PRINTLN(tempOUTKamna);
         }
         if (val.substring(0,1)=="R") {
           pumpStatus=val.substring(2).toInt(); 
-          Serial.println(pumpStatus);
+          DEBUG_PRINTLN(pumpStatus);
         }
         i++;
       }
-      Serial.println("I am sending data from Central heating unit to OpenHab");
+      DEBUG_PRINTLN("I am sending data from Central heating unit to OpenHab");
     
       MQTT_connect();
       if (! tINKamna.publish(tempINKamna)) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! tOUTKamna.publish(tempOUTKamna)) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! sPumpKamna.publish(pumpStatus)) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       
 
       if (! t0.publish(temp[0])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t1.publish(temp[1])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t2.publish(temp[2])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t3.publish(temp[3])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t4.publish(temp[4])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t5.publish(temp[5])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t6.publish(temp[6])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t7.publish(temp[7])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t8.publish(temp[8])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t9.publish(temp[9])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t10.publish(temp[10])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       if (! t11.publish(temp[11])) {
-        Serial.println("failed");
+        DEBUG_PRINTLN("failed");
       } else {
-        Serial.println("OK!");
+        DEBUG_PRINTLN("OK!");
       }
       
       if (millis() - milisLastRunMinOld > 60000) {
         if (! version.publish(versionSW)) {
-          Serial.println("failed");
+          DEBUG_PRINTLN("failed");
         } else {
-          Serial.println("OK!");
+          DEBUG_PRINTLN("OK!");
         }
         if (! hb.publish(heartBeat)) {
-          Serial.println("failed");
+          DEBUG_PRINTLN("failed");
         } else {
-          Serial.println("OK!");
+          DEBUG_PRINTLN("OK!");
         }
         heartBeat++;
       }
@@ -292,7 +323,7 @@ void loop() {
       digitalWrite(pinLed,HIGH);
     } else {
       emptyData=true;
-      Serial.println("empty data");
+      DEBUG_PRINTLN("empty data");
     }
 
   }
@@ -316,12 +347,12 @@ void MQTT_connect() {
     return;
   }
 
-  Serial.print("Connecting to MQTT... ");
+  DEBUG_PRINT("Connecting to MQTT... ");
 
   uint8_t retries = 3;
   while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
-       Serial.println(mqtt.connectErrorString(ret));
-       Serial.println("Retrying MQTT connection in 5 seconds...");
+       DEBUG_PRINTLN(mqtt.connectErrorString(ret));
+       DEBUG_PRINTLN("Retrying MQTT connection in 5 seconds...");
        mqtt.disconnect();
        delay(5000);  // wait 5 seconds
        retries--;
@@ -330,7 +361,7 @@ void MQTT_connect() {
          while (1);
        }
   }
-  Serial.println("MQTT Connected!");
+  DEBUG_PRINTLN("MQTT Connected!");
 }
 
 String getValue(String data, char separator, int index) {
