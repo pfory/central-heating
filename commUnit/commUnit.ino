@@ -1,5 +1,7 @@
+//CENTRAL HEATING COMMUNICATION UNIT
 //ESP8266-01
 //kompilovat jako Generic ESP8266 Module
+//BUILTIN_LED ON 1
 
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
@@ -25,7 +27,7 @@
  #define DEBUG_PRINTF(x, y)
 #endif 
 
-#define PORTSPEED 9600
+#define PORTSPEED 9600 //must be
 
 //for LED status
 #include <Ticker.h>
