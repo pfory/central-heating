@@ -301,20 +301,6 @@ void loop() {
         DEBUG_PRINTLN("OK!");
       }
       
-      if (millis() - milisLastRunMinOld > 60000) {
-        if (! version.publish(versionSW)) {
-          DEBUG_PRINTLN("failed");
-        } else {
-          DEBUG_PRINTLN("OK!");
-        }
-        if (! hb.publish(heartBeat)) {
-          DEBUG_PRINTLN("failed");
-        } else {
-          DEBUG_PRINTLN("OK!");
-        }
-        heartBeat++;
-      }
-      
       digitalWrite(BUILTIN_LED,HIGH);
     } else {
       emptyData=true;
@@ -322,6 +308,22 @@ void loop() {
     }
 
   }
+
+  if (millis() - milisLastRunMinOld > 60000) {
+    milisLastRunMinOld = millis();
+    if (! version.publish(versionSW)) {
+      DEBUG_PRINTLN("failed");
+    } else {
+      DEBUG_PRINTLN("OK!");
+    }
+    if (! hb.publish(heartBeat)) {
+      DEBUG_PRINTLN("failed");
+    } else {
+      DEBUG_PRINTLN("OK!");
+    }
+    heartBeat++;
+  }
+
   // ping the server to keep the mqtt connection alive
   // NOT required if you are publishing once every KEEPALIVE seconds
   /*
