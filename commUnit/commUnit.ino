@@ -15,8 +15,11 @@
 #define ota
 #ifdef ota
 #include <ArduinoOTA.h>
-#define HOSTNAMEOTA   "anemometer"
+#define HOSTNAMEOTA   "central"
 #endif
+
+#define AUTOCONNECTNAME   HOSTNAMEOTA
+#define AUTOCONNECTPWD    "password"
 
 //#define serverHTTP
 #ifdef serverHTTP
@@ -75,13 +78,14 @@ DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 float versionSW                             = 1.0;
 char versionSWString[]                      = "Central Heating v"; //SW name & version
 uint32_t heartBeat                          = 0;
+String received                             = "";
+
 
 float       temp[15];
 float       tempINKamna, tempOUTKamna;
 int         pumpStatus                      = 0;
-    
-ADC_MODE(ADC_VCC);
 
+const unsigned long   sendStatDelay         = 60000;    
 
 bool isDebugEnabled()
 {
@@ -253,7 +257,7 @@ void setup() {
   //if it does not connect it starts an access point with the specified name
   //here  "AutoConnectAP"
   //and goes into a blocking loop awaiting configuration
-  if (!wifiManager.autoConnect("Anemometer", "password")) { 
+  if (!wifiManager.autoConnect(AUTOCONNECTNAME, AUTOCONNECTPWD)) { 
     DEBUG_PRINTLN("failed to connect and hit timeout");
     delay(3000);
     //reset and try again, or maybe put it to deep sleep
@@ -338,10 +342,6 @@ void setup() {
   ArduinoOTA.begin();
 #endif
 
-  //v klidu +3V, pulz vstup stahuje k zemi pres pulldown
-  pinMode(interruptPin, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(interruptPin), pulseCountEvent, RISING);
-
   //setup timers
   //timer.every(sendDelay, sendDataHA);
   timer.every(sendStatDelay, sendStatisticHA);
@@ -363,7 +363,7 @@ void loop() {
   // Ensure the connection to the MQTT server is alive (this will make the first
   // connection and automatically reconnect when disconnected).  See the MQTT_connect
   // function definition further below.
-  if (Serial.available()>0) { 
+  if (Serial.available() > 0) { 
     received=Serial.readStringUntil('*');
     DEBUG_PRINTLN(received);
   // }
@@ -445,96 +445,9 @@ void loop() {
       }
       
       sendDataHA();
-      
-      // DEBUG_PRINTLN("I am sending data from Central heating unit to OpenHab");
-    
-      // MQTT_connect();
-      // if (! tINKamna.publish(tempINKamna)) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! tOUTKamna.publish(tempOUTKamna)) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! sPumpKamna.publish(pumpStatus)) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      
+    }
+  }
 
-      // if (! t0.publish(temp[0])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t1.publish(temp[1])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t2.publish(temp[2])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t3.publish(temp[3])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t4.publish(temp[4])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t5.publish(temp[5])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t6.publish(temp[6])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t7.publish(temp[7])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t8.publish(temp[8])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t9.publish(temp[9])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t10.publish(temp[10])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      // if (! t11.publish(temp[11])) {
-        // DEBUG_PRINTLN("failed");
-      // } else {
-        // DEBUG_PRINTLN("OK!");
-      // }
-      
-      // digitalWrite(BUILTIN_LED,HIGH);
-    // } else {
-      // emptyData=true;
-      // DEBUG_PRINTLN("empty data");
-    // }
-
-  // }
-  
 #ifdef ota
   ArduinoOTA.handle();
 #endif
@@ -725,8 +638,6 @@ bool sendDataHA() {
   DEBUG_PRINTLN(F("Calling MQTT"));
 
   sender.sendMQTT(mqtt_server, mqtt_port, mqtt_username, mqtt_key, mqtt_base);
-  pulseCount = 0;
-  lastSend = millis();
   digitalWrite(BUILTIN_LED, HIGH);
   return true;
 }
@@ -738,7 +649,7 @@ bool sendStatisticHA(void *) {
 
   SenderClass sender;
   sender.add("VersionSW", versionSW);
-  sender.add("Napeti",  ESP.getVcc());
+  //sender.add("Napeti",  ESP.getVcc());
   sender.add("HeartBeat", heartBeat++);
   sender.add("RSSI", WiFi.RSSI());
   DEBUG_PRINTLN(F("Calling MQTT"));
