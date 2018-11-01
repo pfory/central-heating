@@ -75,7 +75,7 @@ DoubleResetDetector drd(DRD_TIMEOUT, DRD_ADDRESS);
 
 #define CFGFILE "/config.json"
 
-float versionSW                             = 1.0;
+float versionSW                             = 1.0f;
 char versionSWString[]                      = "Central Heating v"; //SW name & version
 uint32_t heartBeat                          = 0;
 String received                             = "";
@@ -648,7 +648,7 @@ bool sendStatisticHA(void *) {
   DEBUG_PRINTLN(F(" - I am sending statistic to HA"));
 
   SenderClass sender;
-  sender.add("VersionSW", versionSW);
+  sender.add("VersionSWCentral", versionSW);
   //sender.add("Napeti",  ESP.getVcc());
   sender.add("HeartBeat", heartBeat++);
   sender.add("RSSI", WiFi.RSSI());
