@@ -98,7 +98,7 @@ struct StoreStruct {
   // The default module 0
   0,
   0, // off
-  60,
+  45,
   5,
   95
 };
@@ -156,19 +156,16 @@ void setup(void) {
   Serial.println(F(VERSION));
 #endif
 
-  // storage.tempON = 60;
-  // storage.tempOFFDiff = 5;
-  // saveConfig();
-
-#ifdef watchdog
-  wdt_enable(WDTO_8S);
-#endif
-
+  /*storage.tempON = 45;
+  storage.tempOFFDiff = 5;
+  saveConfig();
+*/
 #ifdef beep
   //peep.Delay(100,40,1,255);
   tone(BUZZERPIN, 5000, 5);
 #endif  
-  lcd.begin();               // initialize the lcd 
+  lcd.init();               // initialize the lcd 
+  lcd.backlight();
   lcd.home();
   lcd.print(SW_NAME);
   PRINT_SPACE
@@ -223,13 +220,13 @@ void setup(void) {
   Serial.println(storage.tempOFFDiff);
   Serial.print(F("Temp alarm "));
   Serial.println(storage.tempAlarm);
+  delay(5000);
+  lcd.clear();
  
   pinMode(RELAYPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
   digitalWrite(RELAYPIN,relay);
   digitalWrite(LEDPIN,!relay);
-  delay(1000);
-  lcd.clear();
   while (true) {
     sensorsOUT.begin(); 
     sensorsIN.begin(); 
@@ -342,6 +339,10 @@ sprintf(adresse_formatee_hexa,
   lastSend=0;
   //lastMeas=-measDelay;
   Serial.println(F("Setup end."));
+#ifdef watchdog
+  wdt_enable(WDTO_8S);
+#endif
+
 }
 
 /////////////////////////////////////////////   L  O  O  P   ///////////////////////////////////////
@@ -636,7 +637,11 @@ void saveConfig() {
 
 void displayTemp() {
 #ifdef time
-  displayTime();
+  //displayTime();
+  lcd.setCursor(15, 0); //col,row
+  lcd.print((int)storage.tempON);
+  lcd.print("/");
+  lcd.print((int)(storage.tempON-storage.tempOFFDiff));
 #else
   lcd.setCursor(19, 0); //col,row
   if (millis() - lastHB >=hbDelay) {
@@ -671,7 +676,7 @@ void displayTemp() {
   }else {
     lcd.print((int)tempOUT);
   }
-  
+  /*
   byte radka=1;
   byte sensor=0;
   byte radiator=1;
@@ -684,7 +689,7 @@ void displayTemp() {
     sensor+=2;
     radka++;
   }
-
+  */
   lcd.setCursor(8, 0);
   if (relay==HIGH) {
     lcd.print("    ");

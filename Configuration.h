@@ -2,7 +2,7 @@
 #define CONFIGURATION_H
 
 //SW name & version
-#define     VERSION                      "0.67"
+#define     VERSION                      "0.68"
 #define     SW_NAME                      "Central heat"
 
 //EEPROM config
